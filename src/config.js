@@ -1,6 +1,8 @@
 /* Constantes de dominio y parámetros de balance. Sin estado mutable ni DOM. */
 
-export const RADIUS = 7;               // radio del mapa hexagonal (mapa grande)
+// Radio del mapa hexagonal. El lado del hexágono grande mide RADIUS+1 sectores y
+// el total es 3·R²+3·R+1, así que R=5 son 6 de lado y 91 sectores.
+export const RADIUS = 5;
 export const HEX_SIZE = 30;
 export const MAX_TURNS = 60;
 export const DOMINANCE_RATIO = 0.6;    // % de mapa para victoria por dominancia
@@ -16,16 +18,24 @@ export const TERRAIN = {
 };
 export const TERRAIN_WEIGHTS = [['mare',.35],['highlands',.30],['crater',.20],['ice',.15]];
 
+const TODO_TERRENO = ['mare','highlands','crater','ice'];
+
 export const BUILDING_TYPES = {
   // 'resource' marca los edificios que se pintan con el icono vectorial del recurso
   // que extraen (ver render/resource-icons.js) en vez de con el glifo de 'icon'.
-  mine:      { name:'Mina de Regolito',   icon:'⛏', resource:'regolith', cost:{regolith:15,helium3:0},  produce:{regolith:3,helium3:0,water:0}, defense:0, allowed:['mare','highlands','crater'] },
-  extractor: { name:'Extractor de He-3',  icon:'☢', resource:'helium3',  cost:{regolith:20,helium3:5},  produce:{regolith:0,helium3:3,water:0}, defense:0, allowed:['highlands','crater'] },
-  melter:    { name:'Fusor de Hielo',     icon:'❄', resource:'water',    cost:{regolith:15,helium3:0},  produce:{regolith:0,helium3:0,water:3}, defense:0, allowed:['ice'] },
-  turret:    { name:'Torreta Defensiva',  icon:'▲', cost:{regolith:25,helium3:10}, produce:{regolith:0,helium3:0,water:0}, defense:3, allowed:['mare','highlands','crater','ice'] },
-  lab:       { name:'Laboratorio',        icon:'◆', cost:{regolith:20,helium3:10}, produce:{regolith:0,helium3:1,water:0}, defense:0, allowed:['mare','highlands','crater','ice'] },
-  base:      { name:'Base Principal',     icon:'★', cost:{regolith:0,helium3:0},   produce:{regolith:1,helium3:1,water:1}, defense:5, allowed:['mare','highlands','crater','ice'] },
+  // 'trains' marca los únicos edificios donde se pueden reclutar guarniciones.
+  mine:      { name:'Mina de Regolito',   icon:'⛏', resource:'regolith', cost:{regolith:15,helium3:0,water:0},  produce:{regolith:3,helium3:0,water:0}, defense:0, allowed:['mare','highlands','crater'] },
+  extractor: { name:'Extractor de He-3',  icon:'☢', resource:'helium3',  cost:{regolith:20,helium3:5,water:0},  produce:{regolith:0,helium3:3,water:0}, defense:0, allowed:['highlands','crater'] },
+  melter:    { name:'Fusor de Hielo',     icon:'❄', resource:'water',    cost:{regolith:15,helium3:0,water:0},  produce:{regolith:0,helium3:0,water:3}, defense:0, allowed:['ice'] },
+  barracks:  { name:'Cuartel Lunar',      icon:'▣', trains:true,         cost:{regolith:20,helium3:10,water:5}, produce:{regolith:0,helium3:0,water:0}, defense:1, allowed:TODO_TERRENO },
+  turret:    { name:'Torreta Defensiva',  icon:'▲', cost:{regolith:25,helium3:10,water:0}, produce:{regolith:0,helium3:0,water:0}, defense:3, allowed:TODO_TERRENO },
+  lab:       { name:'Laboratorio',        icon:'◆', cost:{regolith:20,helium3:10,water:0}, produce:{regolith:0,helium3:1,water:0}, defense:0, allowed:TODO_TERRENO },
+  base:      { name:'Base Principal',     icon:'★', trains:true,         cost:{regolith:0,helium3:0,water:0},   produce:{regolith:1,helium3:1,water:1}, defense:5, allowed:TODO_TERRENO },
 };
+
+/* Coste de reclutar una guarnición. Vive aquí porque lo consultan a la vez la
+   economía, la IA y el panel de acciones. */
+export const TRAIN_COST = { regolith:12, helium3:4, water:0 };
 
 export const TECHS = [
   { id:'armor',    name:'Blindaje Reforzado',     cost:40, desc:'+1 fuerza a todas tus unidades (ataque y defensa)' },

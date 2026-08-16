@@ -1,7 +1,8 @@
 # Conquista Lunar
 
 Simulador de estrategia por turnos sobre la superficie lunar. Tres facciones
-compiten por el control territorial de un mapa hexagonal de 169 sectores.
+compiten por el control territorial de un mapa hexagonal de 91 sectores
+(6 de lado).
 
 JavaScript puro con ES modules: **sin dependencias, sin build step**.
 
@@ -29,6 +30,8 @@ node tests/balance-sim.mjs 200   # simulación IA vs IA, sin navegador
 - **Cuatro terrenos** con producción y bonus defensivo propios, dibujados como
   iconos pixel art que ganan resolución al acercar el zoom.
 - **Movimiento de 1 sector por ronda** por guarnición.
+- **Reclutamiento localizado**: las guarniciones solo se entrenan en la Base
+  Principal y en los Cuarteles Lunares.
 - **Apoyo de flanco**: un sector aliado refuerza el combate si linda a la vez con
   el combatiente y con el sector en disputa.
 - **Combate determinista** con desglose completo de cada modificador.

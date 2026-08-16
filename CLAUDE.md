@@ -92,6 +92,16 @@ introduce una dependencia del DOM en la capa de lógica, deja de ejecutarse.
 - **Movimiento**: cada guarnición se desplaza como máximo **1 sector por ronda**.
   Se controla con `hex.movedUnits`; `availableUnits(hex)` es la única vía
   legítima para saber cuántas tropas pueden recibir órdenes.
+- **Reclutamiento localizado**: las guarniciones solo se entrenan en edificios
+  marcados con `trains:true` en `BUILDING_TYPES` — hoy la Base Principal y el
+  Cuartel Lunar. `canTrainAt(hex)` es la única vía legítima para comprobarlo: no
+  compares contra los nombres de tipo a mano. Combinado con el movimiento de 1
+  sector por ronda, esto convierte la colocación de cuarteles en la decisión que
+  fija el frente, y deja sin refuerzos a quien pierda todos sus puntos de recluta.
+- **Costes en tres recursos**: `cost` siempre declara `regolith`, `helium3` y
+  `water`. Usa `canAfford()` / `payCost()` de `economy.js` en lugar de restar
+  recursos a mano; el Cuartel Lunar fue el primero en gastar agua y varios sitios
+  daban por hecho que solo existían dos monedas.
 - **Apoyo**: un sector aliado refuerza a un combatiente si linda *a la vez* con
   el combatiente y con el sector en disputa. Simétrico para ataque y defensa. En
   una rejilla hexagonal dos casillas adyacentes comparten **siempre exactamente
@@ -110,19 +120,35 @@ límite de rondas** sin que nadie alcance el 60 % de dominancia.
 Diagnóstico ya realizado (no hace falta repetirlo):
 
 - **No es el apoyo.** Probado con `SUPPORT_FACTOR` a 0 / 0.25 / 0.5 / 1: ninguna
-  partida se resuelve en ningún caso. Más apoyo incluso *acelera* la expansión
-  (líder final 9,8 % → 17,3 %), porque favorece a quien ya tiene frente formado.
-- **No son los recursos ni el tope de población.** En la ronda 60 la facción
-  acumula ~2.600 de regolito sin gastar y un tope de 1.252 unidades para 52
-  reclutadas.
+  partida se resuelve en ningún caso. Más apoyo incluso *acelera* la expansión,
+  porque favorece a quien ya tiene frente formado.
+- **No son los recursos ni el tope de población.** En la ronda 60 el líder
+  acumula ~660 de regolito y ~430 de agua sin gastar, y un tope de ~870 unidades
+  para unas 42 reclutadas.
 - **La causa está en el ritmo de reclutamiento**: `aiTakeTurn()` entrena **una
-  sola unidad por turno**, y el mapa (169 sectores; hacen falta 102 para ganar)
-  es demasiado grande para ese ritmo en 60 rondas.
+  sola unidad por turno** como mucho, ritmo insuficiente para conquistar el mapa
+  en 60 rondas. Ese techo no lo movió ninguno de los cambios posteriores.
+
+Medidas sucesivas del territorio medio del líder al final (misma simulación):
+
+| Configuración                                    | Mapa | Líder final |
+|--------------------------------------------------|------|-------------|
+| `RADIUS=7`, reclutamiento libre                   | 169  | 17,3 % (~29 sect.) |
+| `RADIUS=5`, reclutamiento libre                   |  91  | 26,4 % (~24 sect.) |
+| `RADIUS=5` + reclutamiento solo en base/cuartel   |  91  |  7,7 % (~7 sect.) |
+| …y la IA priorizando cuarteles (`ai.js`)          |  91  | 12,5 % (~11 sect.) |
+
+Lecturas: encoger el mapa ayuda mucho en proporción (17,3 → 26,4 %) pero **no
+basta** para resolver partidas. Limitar el reclutamiento cuesta más o menos la
+mitad del territorio del líder (26,4 → 12,5 %), que es el precio esperado de la
+regla; el hundimiento hasta 7,7 % era en cambio un fallo: el umbral de prioridad
+de cuarteles estaba mal calculado y la IA se quedaba con un único punto de
+recluta. El techo de 1 unidad/turno sigue mandando por encima de todo.
 
 Líneas de ataque razonables, a decidir por el mantenedor: permitir a la IA
-reclutar en proporción a sus recursos, subir `MAX_TURNS`, reducir `RADIUS`, o
-bajar `DOMINANCE_RATIO`. **Conviene medir cada cambio con la simulación** en vez
-de ajustar a ojo.
+reclutar en proporción a sus puntos de recluta, subir `MAX_TURNS`, o bajar
+`DOMINANCE_RATIO`. **Conviene medir cada cambio con la simulación** en vez de
+ajustar a ojo.
 
 ## Estilo de código
 

@@ -1,8 +1,14 @@
 /* Turnos de la IA rival: expansión, construcción, reclutamiento e investigación. */
-import { BUILDING_TYPES, TECHS } from './config.js';
+import { BUILDING_TYPES, TECHS, TRAIN_COST } from './config.js';
 import { state, neighborsOf, availableUnits, popCap, totalUnits, log } from './state.js';
 import { attackPower, defensePower, resolveCombat } from './combat.js';
-import { canBuild } from './economy.js';
+import { canBuild, canTrainAt, canAfford, payCost } from './economy.js';
+
+/* La IA no gasta hasta el último recurso: exige un colchón sobre el coste para no
+   quedarse sin margen de reacción justo después de construir. */
+function conMargen(cost){
+  return { regolith:(cost.regolith||0)+10, helium3:(cost.helium3||0)+5, water:(cost.water||0)+2 };
+}
 
 export function aiTakeTurn(factionId){
   const faction = state.factions[factionId];
@@ -30,31 +36,36 @@ export function aiTakeTurn(factionId){
   }
 
   // 2. Construcción
-  const buildable = [...state.hexes.values()].filter(h=>h.owner===factionId && !h.building);
-  for(const h of buildable){
+  const misSectores = [...state.hexes.values()].filter(h=>h.owner===factionId);
+  let puntosDeRecluta = misSectores.filter(canTrainAt).length;
+  for(const h of misSectores.filter(h=>!h.building)){
     const options = Object.keys(BUILDING_TYPES).filter(t=>t!=='base' && canBuild(h,t));
+    // Con el reclutamiento limitado a los edificios 'trains', quedarse corto de
+    // cuarteles asfixia la expansión: mientras no llegue a uno por cada 5 sectores,
+    // el Cuartel Lunar pasa por delante del resto de opciones. Ojo con el umbral:
+    // si se calcula de forma que iguale a los que ya tiene, nunca se prioriza y la
+    // IA se queda reclutando solo en su base.
+    if(puntosDeRecluta < 1 + Math.ceil(misSectores.length/5)){
+      options.sort((a,b) => (b==='barracks') - (a==='barracks'));
+    }
     for(const opt of options){
       const b = BUILDING_TYPES[opt];
-      if(faction.resources.regolith>=b.cost.regolith+10 && faction.resources.helium3>=b.cost.helium3+5){
-        faction.resources.regolith -= b.cost.regolith;
-        faction.resources.helium3 -= b.cost.helium3;
+      if(canAfford(faction, conMargen(b.cost))){
+        payCost(faction, b.cost);
         h.building = opt;
+        if(b.trains) puntosDeRecluta++;
         break;
       }
     }
   }
 
-  // 3. Entrenamiento
-  const border = [...state.hexes.values()].filter(h=>h.owner===factionId);
-  if(border.length){
-    const target = border[Math.floor(Math.random()*border.length)];
-    const cost = {regolith:12, helium3:4};
-    if(faction.resources.regolith>=cost.regolith+10 && faction.resources.helium3>=cost.helium3
-       && totalUnits(faction) < popCap(faction)){
-      faction.resources.regolith -= cost.regolith;
-      faction.resources.helium3 -= cost.helium3;
-      target.units += 1;
-    }
+  // 3. Entrenamiento: solo en base y cuarteles
+  const cuarteles = misSectores.filter(canTrainAt);
+  if(cuarteles.length && canAfford(faction, conMargen(TRAIN_COST))
+     && totalUnits(faction) < popCap(faction)){
+    const target = cuarteles[Math.floor(Math.random()*cuarteles.length)];
+    payCost(faction, TRAIN_COST);
+    target.units += 1;
   }
 
   // 4. Tecnología

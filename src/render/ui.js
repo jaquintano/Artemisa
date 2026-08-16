@@ -1,8 +1,8 @@
 /* Paneles laterales, registro de misión, leyenda y selección de sectores. */
-import { TERRAIN, BUILDING_TYPES, TECHS, MAX_TURNS } from '../config.js';
+import { TERRAIN, BUILDING_TYPES, TECHS, MAX_TURNS, TRAIN_COST } from '../config.js';
 import { state, sectorLabel, neighborsOf, availableUnits, popCap, totalUnits, territoryCount } from '../state.js';
 import { fmtNum, attackPowerDetail, defensePowerDetail, describeAttack, describeDefense } from '../combat.js';
-import { buildBuilding, trainUnit, research } from '../economy.js';
+import { buildBuilding, trainUnit, research, canAfford, canTrainAt } from '../economy.js';
 import { confirmMove } from '../game.js';
 import { renderMap } from './map.js';
 import { resourceIconInline } from './resource-icons.js';
@@ -30,6 +30,15 @@ export function onHexClick(hex){
 
 export function resIcon(kind, px){
   return resourceIconInline(kind, px);
+}
+
+/* Muestra solo los recursos que el coste realmente consume, para que una línea de
+   coste no se llene de ceros. */
+export function costLabel(cost){
+  return [['regolith',cost.regolith], ['helium3',cost.helium3], ['water',cost.water]]
+    .filter(([,n]) => n > 0)
+    .map(([kind,n]) => `${n} ${resIcon(kind,11)}`)
+    .join(' / ');
 }
 
 export function renderResbar(){
@@ -90,9 +99,9 @@ export function renderHexPanel(){
       out += `<div class="build-list">`;
       for(const [key,b] of Object.entries(BUILDING_TYPES)){
         if(key==='base' || !b.allowed.includes(h.terrain)) continue;
-        const afford = player.resources.regolith>=b.cost.regolith && player.resources.helium3>=b.cost.helium3;
+        const afford = canAfford(player, b.cost);
         out += `<div class="build-opt">
-          <div class="bo-name"><span>${b.resource?resIcon(b.resource,12):b.icon} ${b.name}</span><span class="bo-cost">${b.cost.regolith} ${resIcon('regolith',11)} ${b.cost.helium3?('/ '+b.cost.helium3+' '+resIcon('helium3',11)):''}</span></div>
+          <div class="bo-name"><span>${b.resource?resIcon(b.resource,12):b.icon} ${b.name}</span><span class="bo-cost">${costLabel(b.cost)}</span></div>
           <button class="btn" data-build="${key}" ${afford?'':'disabled'}>CONSTRUIR</button>
         </div>`;
       }
@@ -100,14 +109,18 @@ export function renderHexPanel(){
     } else {
       out += `<div class="empty-hint">Instalación construida: no se puede añadir otra en este sector.</div>`;
     }
-    const trainCost = {regolith:12,helium3:4};
-    const canTrain = player.resources.regolith>=trainCost.regolith && player.resources.helium3>=trainCost.helium3
-      && totalUnits(player) < popCap(player);
-    out += `<div class="build-opt" style="margin-top:10px;">
-      <div class="bo-name"><span>⬡ Entrenar unidad</span><span class="bo-cost">${trainCost.regolith} ${resIcon('regolith',11)} / ${trainCost.helium3} ${resIcon('helium3',11)}</span></div>
-      <button class="btn" id="trainbtn" ${canTrain?'':'disabled'}>ENTRENAR</button>
-    </div>
-    <div class="empty-hint">Pulsa un sector adyacente en el mapa para mover o atacar con estas tropas.</div>`;
+    if(canTrainAt(h)){
+      const topeLleno = totalUnits(player) >= popCap(player);
+      const canTrain = canAfford(player, TRAIN_COST) && !topeLleno;
+      out += `<div class="build-opt" style="margin-top:10px;">
+        <div class="bo-name"><span>⬡ Entrenar unidad</span><span class="bo-cost">${costLabel(TRAIN_COST)}</span></div>
+        <button class="btn" id="trainbtn" ${canTrain?'':'disabled'}>ENTRENAR</button>
+      </div>
+      ${topeLleno?`<div class="empty-hint">Tope de población alcanzado (${popCap(player)}). Consigue más agua para ampliarlo.</div>`:''}`;
+    } else {
+      out += `<div class="empty-hint" style="margin-top:10px;">Aquí no se pueden reclutar tropas: solo se entrena en la <b>Base Principal</b> y en los <b>Cuarteles Lunares</b>.</div>`;
+    }
+    out += `<div class="empty-hint">Pulsa un sector adyacente en el mapa para mover o atacar con estas tropas.</div>`;
   }
 
   el.innerHTML = out;

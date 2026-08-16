@@ -1,5 +1,5 @@
 /* Economía: producción por turno, construcción, entrenamiento e investigación. */
-import { TERRAIN, BUILDING_TYPES, TECHS } from './config.js';
+import { TERRAIN, BUILDING_TYPES, TECHS, TRAIN_COST } from './config.js';
 import { state, sectorLabel, log, popCap, totalUnits } from './state.js';
 import { requestRender } from './render/bus.js';
 
@@ -30,18 +30,37 @@ export function produceResources(){
   }
 }
 
+/* Los costes se declaran con los tres recursos, pero se leen con `|| 0` para que
+   un coste parcial escrito a mano no rompa las cuentas en silencio. */
+export function canAfford(faction, cost){
+  return faction.resources.regolith >= (cost.regolith || 0)
+      && faction.resources.helium3  >= (cost.helium3  || 0)
+      && faction.resources.water    >= (cost.water    || 0);
+}
+export function payCost(faction, cost){
+  faction.resources.regolith -= (cost.regolith || 0);
+  faction.resources.helium3  -= (cost.helium3  || 0);
+  faction.resources.water    -= (cost.water    || 0);
+}
+
 export function canBuild(hex, type){
   const b = BUILDING_TYPES[type];
   return b.allowed.includes(hex.terrain) && !hex.building;
+}
+
+/* Las guarniciones solo salen de un edificio marcado con `trains`: la Base
+   Principal y el Cuartel Lunar. Perder todos ellos deja a la facción sin poder
+   reponer tropas, que es justo la tensión que persigue la regla. */
+export function canTrainAt(hex){
+  return !!hex.building && !!BUILDING_TYPES[hex.building].trains;
 }
 
 export function buildBuilding(hex, type){
   const faction = state.factions[0];
   const b = BUILDING_TYPES[type];
   if(!canBuild(hex,type)) return;
-  if(faction.resources.regolith < b.cost.regolith || faction.resources.helium3 < b.cost.helium3) return;
-  faction.resources.regolith -= b.cost.regolith;
-  faction.resources.helium3 -= b.cost.helium3;
+  if(!canAfford(faction, b.cost)) return;
+  payCost(faction, b.cost);
   hex.building = type;
   log(`Construida <b>${b.name}</b> en ${sectorLabel(hex)}`);
   requestRender();
@@ -49,11 +68,10 @@ export function buildBuilding(hex, type){
 
 export function trainUnit(hex){
   const faction = state.factions[0];
-  const cost = {regolith:12, helium3:4};
-  if(faction.resources.regolith < cost.regolith || faction.resources.helium3 < cost.helium3) return;
+  if(!canTrainAt(hex)) return;
+  if(!canAfford(faction, TRAIN_COST)) return;
   if(totalUnits(faction) >= popCap(faction)) return;
-  faction.resources.regolith -= cost.regolith;
-  faction.resources.helium3 -= cost.helium3;
+  payCost(faction, TRAIN_COST);
   hex.units += 1;
   log(`Nueva unidad entrenada en ${sectorLabel(hex)}`);
   requestRender();
