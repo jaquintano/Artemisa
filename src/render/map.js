@@ -4,6 +4,7 @@ import { state, sectorLabel, availableUnits, getHex } from '../state.js';
 import { supportersFor } from '../combat.js';
 import { axialToPixel, shade, pt, isoUnitToken } from './svg-utils.js';
 import { TERRAIN_ICON_DEFS, ICON_PX, ICON_HALF, setIconResolution } from './pixelart.js';
+import { RESOURCE_ICON_DEFS, resourceIconUse } from './resource-icons.js';
 
 export let mapZoom = 1;
 
@@ -75,7 +76,7 @@ export function renderMap(){
   }
   const inList = (list,h) => list.some(s=>s.q===h.q && s.r===h.r);
 
-  let html = TERRAIN_ICON_DEFS;
+  let html = TERRAIN_ICON_DEFS + RESOURCE_ICON_DEFS;
   for(const [h,pos] of ordered){
     const {x,y,elev} = pos;
     const topY = y - elev;
@@ -111,7 +112,11 @@ export function renderMap(){
     html += `<use href="#icon-${h.terrain}" transform="translate(${(x-ICON_HALF).toFixed(1)},${(topY-ICON_HALF).toFixed(1)}) scale(${ICON_PX.toFixed(3)})"></use>`;
 
     if(h.building){
-      html += `<text class="hexicon" x="${x}" y="${topY-6}">${BUILDING_TYPES[h.building].icon}</text>`;
+      const b = BUILDING_TYPES[h.building];
+      // los edificios de recurso llevan icono vectorial; el resto siguen con su glifo
+      html += b.resource
+        ? resourceIconUse(b.resource, x, topY-9)
+        : `<text class="hexicon" x="${x}" y="${topY-6}">${b.icon}</text>`;
     }
     if(h.units>0){
       const uColor = faction ? faction.color : '#9AA0AC';

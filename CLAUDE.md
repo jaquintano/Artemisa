@@ -17,9 +17,13 @@ con ES modules, sin dependencias de runtime ni build step**.
    `src/main.js` como módulo directamente.
 3. **Todo el texto de la interfaz en español**, incluidos los mensajes del
    registro de misión y el tutorial.
-4. **Gráficos generados por código.** El terreno y las unidades son SVG dibujado
-   mediante rectángulos/polígonos calculados en tiempo de ejecución. No se
-   incorporan ficheros de imagen ni sprites externos.
+4. **Gráficos generados por código.** El terreno, las unidades y los recursos son
+   SVG dibujado mediante rectángulos/polígonos calculados en tiempo de ejecución.
+   No se incorporan ficheros de imagen ni sprites externos. Conviven dos estilos
+   deliberadamente distintos: el terreno es pixel art que *se regenera* a más
+   resolución al acercar el zoom (`pixelart.js`), mientras que unidades y recursos
+   son vectoriales y se dibujan una sola vez, nítidos a cualquier escala
+   (`svg-utils.js`, `resource-icons.js`). No unifiques ambos criterios.
 5. **La lógica de dominio no toca el DOM.** `config`, `state`, `combat`,
    `economy`, `ai` y `victory` deben poder ejecutarse en Node sin navegador.
    Cualquier necesidad de repintar se canaliza por `src/render/bus.js`.
@@ -42,6 +46,7 @@ src/
     bus.js          inversión de dependencia lógica -> presentación
     svg-utils.js    geometría hexagonal y sombreado de color
     pixelart.js     iconos de terreno, regenerados según el zoom
+    resource-icons.js  iconos vectoriales de regolito, helio-3 y hielo
     map.js          render del mapa, zoom y scroll
     ui.js           paneles, registro de misión, leyenda
 tests/

@@ -41,6 +41,8 @@
   .res{display:flex;align-items:center;gap:5px;font-size:12px;background:var(--bg-panel-2);
     border:1px solid var(--line);border-radius:3px;padding:5px 10px;}
   .res .ic{font-size:13px;}
+  /* iconos de recurso: SVG vectorial en línea, nítido a cualquier escala */
+  .ricon{vertical-align:-.18em;flex-shrink:0;}
   .res.regolith{color:#C9B896;}
   .res.helium{color:#8FE0E0;}
   .res.water{color:#9FD3E8;}

@@ -5,6 +5,7 @@ import { fmtNum, attackPowerDetail, defensePowerDetail, describeAttack, describe
 import { buildBuilding, trainUnit, research } from '../economy.js';
 import { confirmMove } from '../game.js';
 import { renderMap } from './map.js';
+import { resourceIconInline } from './resource-icons.js';
 
 export function onHexClick(hex){
   if(state.gameOver) return;
@@ -27,16 +28,16 @@ export function onHexClick(hex){
   renderAll();
 }
 
-export function resIcon(kind){
-  return kind==='regolith'?'⛰':kind==='helium3'?'☢':'❄';
+export function resIcon(kind, px){
+  return resourceIconInline(kind, px);
 }
 
 export function renderResbar(){
   const p = state.factions[0];
   document.getElementById('resbar').innerHTML = `
-    <div class="res regolith"><span class="ic">⛰</span> ${Math.floor(p.resources.regolith)}</div>
-    <div class="res helium"><span class="ic">☢</span> ${Math.floor(p.resources.helium3)}</div>
-    <div class="res water"><span class="ic">❄</span> ${Math.floor(p.resources.water)}</div>
+    <div class="res regolith">${resIcon('regolith',15)} ${Math.floor(p.resources.regolith)}</div>
+    <div class="res helium">${resIcon('helium3',15)} ${Math.floor(p.resources.helium3)}</div>
+    <div class="res water">${resIcon('water',15)} ${Math.floor(p.resources.water)}</div>
     <div class="res" style="color:var(--text-dim)">👥 ${totalUnits(p)}/${popCap(p)}</div>
   `;
   document.getElementById('turnbadge').textContent = `RONDA ${state.turn} / ${MAX_TURNS}`;
@@ -65,7 +66,7 @@ export function renderHexPanel(){
   let out = `<p class="panel-title">SECTOR SELECCIONADO</p>
     <div class="hexinfo-name" style="color:${faction?faction.color:'var(--text-main)'}">${sectorLabel(h)}</div>
     <div class="hexinfo-terrain">${t.name}${faction?(' · Control: '+faction.name):' · Sin reclamar'}</div>
-    <div class="stat-row"><span>Producción base</span><b>+${t.regolith} ⛰ / +${t.helium3} ☢ / +${t.water} ❄</b></div>
+    <div class="stat-row"><span>Producción base</span><b>+${t.regolith} ${resIcon('regolith')} / +${t.helium3} ${resIcon('helium3')} / +${t.water} ${resIcon('water')}</b></div>
     <div class="stat-row"><span>Guarnición</span><b>${h.units} unidades</b></div>
     ${isMine ? `<div class="stat-row"><span>Disponibles este turno</span><b style="color:${avail>0?'var(--ok)':'var(--danger)'}">${avail}${spent>0?` (${spent} ya movidas)`:''}</b></div>` : ''}
     <div class="stat-row"><span>Instalación</span><b>${h.building?BUILDING_TYPES[h.building].name:'— ninguna —'}</b></div>
@@ -91,7 +92,7 @@ export function renderHexPanel(){
         if(key==='base' || !b.allowed.includes(h.terrain)) continue;
         const afford = player.resources.regolith>=b.cost.regolith && player.resources.helium3>=b.cost.helium3;
         out += `<div class="build-opt">
-          <div class="bo-name"><span>${b.icon} ${b.name}</span><span class="bo-cost">${b.cost.regolith}⛰ ${b.cost.helium3?('/ '+b.cost.helium3+'☢'):''}</span></div>
+          <div class="bo-name"><span>${b.resource?resIcon(b.resource,12):b.icon} ${b.name}</span><span class="bo-cost">${b.cost.regolith} ${resIcon('regolith',11)} ${b.cost.helium3?('/ '+b.cost.helium3+' '+resIcon('helium3',11)):''}</span></div>
           <button class="btn" data-build="${key}" ${afford?'':'disabled'}>CONSTRUIR</button>
         </div>`;
       }
@@ -103,7 +104,7 @@ export function renderHexPanel(){
     const canTrain = player.resources.regolith>=trainCost.regolith && player.resources.helium3>=trainCost.helium3
       && totalUnits(player) < popCap(player);
     out += `<div class="build-opt" style="margin-top:10px;">
-      <div class="bo-name"><span>⬡ Entrenar unidad</span><span class="bo-cost">${trainCost.regolith}⛰ / ${trainCost.helium3}☢</span></div>
+      <div class="bo-name"><span>⬡ Entrenar unidad</span><span class="bo-cost">${trainCost.regolith} ${resIcon('regolith',11)} / ${trainCost.helium3} ${resIcon('helium3',11)}</span></div>
       <button class="btn" id="trainbtn" ${canTrain?'':'disabled'}>ENTRENAR</button>
     </div>
     <div class="empty-hint">Pulsa un sector adyacente en el mapa para mover o atacar con estas tropas.</div>`;
@@ -160,7 +161,7 @@ export function renderTechs(){
     const done = player.techs.has(t.id);
     const afford = player.resources.helium3 >= t.cost;
     return `<div class="tech-item ${done?'done':''}">
-      <div class="tech-head"><span>${t.name}</span><span>${done?'✓ COMPLETO':t.cost+' ☢'}</span></div>
+      <div class="tech-head"><span>${t.name}</span><span>${done?'✓ COMPLETO':t.cost+' '+resIcon('helium3',12)}</span></div>
       <div class="tech-desc">${t.desc}</div>
       ${done?'':`<button class="btn" data-tech="${t.id}" ${afford?'':'disabled'} style="width:100%;">INVESTIGAR</button>`}
     </div>`;

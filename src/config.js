@@ -17,9 +17,11 @@ export const TERRAIN = {
 export const TERRAIN_WEIGHTS = [['mare',.35],['highlands',.30],['crater',.20],['ice',.15]];
 
 export const BUILDING_TYPES = {
-  mine:      { name:'Mina de Regolito',   icon:'⛏', cost:{regolith:15,helium3:0},  produce:{regolith:3,helium3:0,water:0}, defense:0, allowed:['mare','highlands','crater'] },
-  extractor: { name:'Extractor de He-3',  icon:'☢', cost:{regolith:20,helium3:5},  produce:{regolith:0,helium3:3,water:0}, defense:0, allowed:['highlands','crater'] },
-  melter:    { name:'Fusor de Hielo',     icon:'❄', cost:{regolith:15,helium3:0},  produce:{regolith:0,helium3:0,water:3}, defense:0, allowed:['ice'] },
+  // 'resource' marca los edificios que se pintan con el icono vectorial del recurso
+  // que extraen (ver render/resource-icons.js) en vez de con el glifo de 'icon'.
+  mine:      { name:'Mina de Regolito',   icon:'⛏', resource:'regolith', cost:{regolith:15,helium3:0},  produce:{regolith:3,helium3:0,water:0}, defense:0, allowed:['mare','highlands','crater'] },
+  extractor: { name:'Extractor de He-3',  icon:'☢', resource:'helium3',  cost:{regolith:20,helium3:5},  produce:{regolith:0,helium3:3,water:0}, defense:0, allowed:['highlands','crater'] },
+  melter:    { name:'Fusor de Hielo',     icon:'❄', resource:'water',    cost:{regolith:15,helium3:0},  produce:{regolith:0,helium3:0,water:3}, defense:0, allowed:['ice'] },
   turret:    { name:'Torreta Defensiva',  icon:'▲', cost:{regolith:25,helium3:10}, produce:{regolith:0,helium3:0,water:0}, defense:3, allowed:['mare','highlands','crater','ice'] },
   lab:       { name:'Laboratorio',        icon:'◆', cost:{regolith:20,helium3:10}, produce:{regolith:0,helium3:1,water:0}, defense:0, allowed:['mare','highlands','crater','ice'] },
   base:      { name:'Base Principal',     icon:'★', cost:{regolith:0,helium3:0},   produce:{regolith:1,helium3:1,water:1}, defense:5, allowed:['mare','highlands','crater','ice'] },
