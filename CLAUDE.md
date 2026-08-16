@@ -98,10 +98,17 @@ introduce una dependencia del DOM en la capa de lógica, deja de ejecutarse.
   compares contra los nombres de tipo a mano. Combinado con el movimiento de 1
   sector por ronda, esto convierte la colocación de cuarteles en la decisión que
   fija el frente, y deja sin refuerzos a quien pierda todos sus puntos de recluta.
-- **Costes en tres recursos**: `cost` siempre declara `regolith`, `helium3` y
-  `water`. Usa `canAfford()` / `payCost()` de `economy.js` en lugar de restar
-  recursos a mano; el Cuartel Lunar fue el primero en gastar agua y varios sitios
+- **Costes en tres recursos**: `cost` siempre declara `regolith`, `helium3` e
+  `ice`. Usa `canAfford()` / `payCost()` de `economy.js` en lugar de restar
+  recursos a mano; el Cuartel Lunar fue el primero en gastar hielo y varios sitios
   daban por hecho que solo existían dos monedas.
+- **Un solo nombre para el tercer recurso: «hielo»** (`ice` en código). Antes
+  convivían `water`/«agua» con el terreno «Casquete de Hielo» y el «Fusor de
+  Hielo», y nadie entendía si eran uno o dos recursos. No reintroduzcas «agua».
+- **La producción se calcula en un único sitio**: `projectedIncome(faction)`.
+  `produceResources()` la cobra y la barra superior la anuncia con el `(+N)`. Si
+  añades un bonus, hazlo ahí dentro o el jugador verá una previsión que no se
+  cumple.
 - **Apoyo**: un sector aliado refuerza a un combatiente si linda *a la vez* con
   el combatiente y con el sector en disputa. Simétrico para ataque y defensa. En
   una rejilla hexagonal dos casillas adyacentes comparten **siempre exactamente
@@ -123,8 +130,8 @@ Diagnóstico ya realizado (no hace falta repetirlo):
   partida se resuelve en ningún caso. Más apoyo incluso *acelera* la expansión,
   porque favorece a quien ya tiene frente formado.
 - **No son los recursos ni el tope de población.** En la ronda 60 el líder
-  acumula ~660 de regolito y ~430 de agua sin gastar, y un tope de ~870 unidades
-  para unas 42 reclutadas.
+  acumula ~660 de regolito sin gastar y un tope de población muy por encima de
+  las ~42 unidades que llega a reclutar.
 - **La causa está en el ritmo de reclutamiento**: `aiTakeTurn()` entrena **una
   sola unidad por turno** como mucho, ritmo insuficiente para conquistar el mapa
   en 60 rondas. Ese techo no lo movió ninguno de los cambios posteriores.

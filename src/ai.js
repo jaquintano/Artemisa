@@ -7,7 +7,7 @@ import { canBuild, canTrainAt, canAfford, payCost } from './economy.js';
 /* La IA no gasta hasta el último recurso: exige un colchón sobre el coste para no
    quedarse sin margen de reacción justo después de construir. */
 function conMargen(cost){
-  return { regolith:(cost.regolith||0)+10, helium3:(cost.helium3||0)+5, water:(cost.water||0)+2 };
+  return { regolith:(cost.regolith||0)+10, helium3:(cost.helium3||0)+5, ice:(cost.ice||0)+2 };
 }
 
 export function aiTakeTurn(factionId){

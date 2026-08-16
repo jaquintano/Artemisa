@@ -3,29 +3,38 @@ import { TERRAIN, BUILDING_TYPES, TECHS, TRAIN_COST } from './config.js';
 import { state, sectorLabel, log, popCap, totalUnits } from './state.js';
 import { requestRender } from './render/bus.js';
 
+/* Producción que entrará en el próximo cierre de turno, sin aplicarla.
+   La usan a la vez produceResources() para cobrarla y la barra superior para
+   anunciarla: así el número que ve el jugador y el que se le abona no pueden
+   separarse cuando se toquen los bonus. */
+export function projectedIncome(faction){
+  const gain = {regolith:0, helium3:0, ice:0};
+  for(const h of state.hexes.values()){
+    if(h.owner!==faction.id) continue;
+    const t = TERRAIN[h.terrain];
+    gain.regolith += t.regolith; gain.helium3 += t.helium3; gain.ice += t.ice;
+    if(h.building){
+      const b = BUILDING_TYPES[h.building];
+      gain.regolith += b.produce.regolith;
+      gain.helium3  += b.produce.helium3;
+      gain.ice      += b.produce.ice;
+      if(h.building==='mine'      && faction.techs.has('drilling')) gain.regolith += 2;
+      if(h.building==='melter'    && faction.techs.has('cryo'))     gain.ice      += 2;
+      if(h.building==='extractor' && faction.techs.has('fusion'))   gain.helium3  += 2;
+    }
+  }
+  return gain;
+}
+
 export function produceResources(){
   for(const faction of state.factions){
     if(!faction.alive) continue;
-    const gain = {regolith:0, helium3:0, water:0};
-    for(const h of state.hexes.values()){
-      if(h.owner!==faction.id) continue;
-      const t = TERRAIN[h.terrain];
-      gain.regolith += t.regolith; gain.helium3 += t.helium3; gain.water += t.water;
-      if(h.building){
-        const b = BUILDING_TYPES[h.building];
-        gain.regolith += b.produce.regolith;
-        gain.helium3  += b.produce.helium3;
-        gain.water    += b.produce.water;
-        if(h.building==='mine' && faction.techs.has('drilling')) gain.regolith += 2;
-        if(h.building==='melter' && faction.techs.has('cryo')) gain.water += 2;
-        if(h.building==='extractor' && faction.techs.has('fusion')) gain.helium3 += 2;
-      }
-    }
+    const gain = projectedIncome(faction);
     faction.resources.regolith += gain.regolith;
     faction.resources.helium3  += gain.helium3;
-    faction.resources.water    += gain.water;
+    faction.resources.ice      += gain.ice;
     if(faction.isPlayer){
-      log(`Producción: +${gain.regolith} regolito, +${gain.helium3} helio-3, +${gain.water} agua`);
+      log(`Producción: +${gain.regolith} regolito, +${gain.helium3} helio-3, +${gain.ice} hielo`);
     }
   }
 }
@@ -35,12 +44,12 @@ export function produceResources(){
 export function canAfford(faction, cost){
   return faction.resources.regolith >= (cost.regolith || 0)
       && faction.resources.helium3  >= (cost.helium3  || 0)
-      && faction.resources.water    >= (cost.water    || 0);
+      && faction.resources.ice      >= (cost.ice      || 0);
 }
 export function payCost(faction, cost){
   faction.resources.regolith -= (cost.regolith || 0);
   faction.resources.helium3  -= (cost.helium3  || 0);
-  faction.resources.water    -= (cost.water    || 0);
+  faction.resources.ice      -= (cost.ice      || 0);
 }
 
 export function canBuild(hex, type){

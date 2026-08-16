@@ -2,7 +2,7 @@
 import { TERRAIN, BUILDING_TYPES, TECHS, MAX_TURNS, TRAIN_COST } from '../config.js';
 import { state, sectorLabel, neighborsOf, availableUnits, popCap, totalUnits, territoryCount } from '../state.js';
 import { fmtNum, attackPowerDetail, defensePowerDetail, describeAttack, describeDefense } from '../combat.js';
-import { buildBuilding, trainUnit, research, canAfford, canTrainAt } from '../economy.js';
+import { buildBuilding, trainUnit, research, canAfford, canTrainAt, projectedIncome } from '../economy.js';
 import { confirmMove } from '../game.js';
 import { renderMap } from './map.js';
 import { resourceIconInline } from './resource-icons.js';
@@ -35,20 +35,28 @@ export function resIcon(kind, px){
 /* Muestra solo los recursos que el coste realmente consume, para que una línea de
    coste no se llene de ceros. */
 export function costLabel(cost){
-  return [['regolith',cost.regolith], ['helium3',cost.helium3], ['water',cost.water]]
+  return [['regolith',cost.regolith], ['helium3',cost.helium3], ['ice',cost.ice]]
     .filter(([,n]) => n > 0)
     .map(([kind,n]) => `${n} ${resIcon(kind,11)}`)
     .join(' / ');
 }
 
+/* Tamaño del icono en la barra superior: un 50% sobre los 15 px del panel lateral. */
+const RESBAR_ICON = 22;
+
 export function renderResbar(){
   const p = state.factions[0];
-  document.getElementById('resbar').innerHTML = `
-    <div class="res regolith">${resIcon('regolith',15)} ${Math.floor(p.resources.regolith)}</div>
-    <div class="res helium">${resIcon('helium3',15)} ${Math.floor(p.resources.helium3)}</div>
-    <div class="res water">${resIcon('water',15)} ${Math.floor(p.resources.water)}</div>
-    <div class="res" style="color:var(--text-dim)">👥 ${totalUnits(p)}/${popCap(p)}</div>
-  `;
+  // el incremento sale del mismo cálculo que luego cobra produceResources()
+  const inc = projectedIncome(p);
+  // se muestra siempre, también cuando es +0: así se ve de un vistazo qué recurso
+  // ha dejado de entrar (p. ej. el hielo si no controlas ningún casquete)
+  const chip = (cls, kind, valor, delta) =>
+    `<div class="res ${cls}">${resIcon(kind,RESBAR_ICON)} ${Math.floor(valor)}<span class="res-inc">(+${delta})</span></div>`;
+  document.getElementById('resbar').innerHTML =
+    chip('regolith','regolith', p.resources.regolith, inc.regolith) +
+    chip('helium',  'helium3',  p.resources.helium3,  inc.helium3) +
+    chip('ice',     'ice',      p.resources.ice,      inc.ice) +
+    `<div class="res pop">👥 ${totalUnits(p)}/${popCap(p)}</div>`;
   document.getElementById('turnbadge').textContent = `RONDA ${state.turn} / ${MAX_TURNS}`;
   document.getElementById('factionsstrip').innerHTML = state.factions.map(f=>{
     const t = territoryCount(f);
@@ -75,7 +83,7 @@ export function renderHexPanel(){
   let out = `<p class="panel-title">SECTOR SELECCIONADO</p>
     <div class="hexinfo-name" style="color:${faction?faction.color:'var(--text-main)'}">${sectorLabel(h)}</div>
     <div class="hexinfo-terrain">${t.name}${faction?(' · Control: '+faction.name):' · Sin reclamar'}</div>
-    <div class="stat-row"><span>Producción base</span><b>+${t.regolith} ${resIcon('regolith')} / +${t.helium3} ${resIcon('helium3')} / +${t.water} ${resIcon('water')}</b></div>
+    <div class="stat-row"><span>Producción base</span><b>+${t.regolith} ${resIcon('regolith')} / +${t.helium3} ${resIcon('helium3')} / +${t.ice} ${resIcon('ice')}</b></div>
     <div class="stat-row"><span>Guarnición</span><b>${h.units} unidades</b></div>
     ${isMine ? `<div class="stat-row"><span>Disponibles este turno</span><b style="color:${avail>0?'var(--ok)':'var(--danger)'}">${avail}${spent>0?` (${spent} ya movidas)`:''}</b></div>` : ''}
     <div class="stat-row"><span>Instalación</span><b>${h.building?BUILDING_TYPES[h.building].name:'— ninguna —'}</b></div>
@@ -116,7 +124,7 @@ export function renderHexPanel(){
         <div class="bo-name"><span>⬡ Entrenar unidad</span><span class="bo-cost">${costLabel(TRAIN_COST)}</span></div>
         <button class="btn" id="trainbtn" ${canTrain?'':'disabled'}>ENTRENAR</button>
       </div>
-      ${topeLleno?`<div class="empty-hint">Tope de población alcanzado (${popCap(player)}). Consigue más agua para ampliarlo.</div>`:''}`;
+      ${topeLleno?`<div class="empty-hint">Tope de población alcanzado (${popCap(player)}). Consigue más hielo para ampliarlo.</div>`:''}`;
     } else {
       out += `<div class="empty-hint" style="margin-top:10px;">Aquí no se pueden reclutar tropas: solo se entrena en la <b>Base Principal</b> y en los <b>Cuarteles Lunares</b>.</div>`;
     }

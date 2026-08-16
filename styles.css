@@ -37,15 +37,19 @@
   .title-block .sub{font-size:10px;color:var(--text-dim);letter-spacing:2px;}
   .turn-badge{background:var(--bg-panel-2);border:1px solid var(--line);border-radius:3px;
     padding:5px 12px;font-size:11px;letter-spacing:1px;color:var(--amber);}
+  /* Barra de recursos: letras e iconos un 50% por encima del resto de la interfaz
+     (12px -> 18px, iconos 15px -> 22px), por ser el indicador que más se consulta. */
   .resbar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;}
-  .res{display:flex;align-items:center;gap:5px;font-size:12px;background:var(--bg-panel-2);
-    border:1px solid var(--line);border-radius:3px;padding:5px 10px;}
-  .res .ic{font-size:13px;}
+  .res{display:flex;align-items:center;gap:8px;font-size:18px;background:var(--bg-panel-2);
+    border:1px solid var(--line);border-radius:4px;padding:8px 15px;}
+  /* el incremento previsto acompaña sin competir con la cifra principal */
+  .res .res-inc{font-size:13px;opacity:.75;font-weight:400;}
+  .res.pop{color:var(--text-dim);}
   /* iconos de recurso: SVG vectorial en línea, nítido a cualquier escala */
   .ricon{vertical-align:-.18em;flex-shrink:0;}
   .res.regolith{color:#C9B896;}
   .res.helium{color:#8FE0E0;}
-  .res.water{color:#9FD3E8;}
+  .res.ice{color:#9FD3E8;}
   .factions-strip{display:flex;gap:8px;align-items:center;}
   .fdot{width:9px;height:9px;border-radius:50%;display:inline-block;}
   .fdead{opacity:.25;text-decoration:line-through;}

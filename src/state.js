@@ -20,7 +20,7 @@ export function newState(){
   }
   const factions = FACTION_DEFS.map(f=>({
     id:f.id, name:f.name, color:f.color, dim:f.dim, isPlayer:f.isPlayer, alive:true,
-    resources:{ regolith:60, helium3:25, water:20 },
+    resources:{ regolith:60, helium3:25, ice:20 },
     techs:new Set(),
   }));
 
@@ -62,7 +62,7 @@ export function sectorLabel(h){
   const row = h.r + RADIUS + 1;
   return `Sector ${col}${row}`;
 }
-export function popCap(faction){ return 8 + faction.resources.water*2; }
+export function popCap(faction){ return 8 + faction.resources.ice*2; }
 export function totalUnits(faction){
   let n=0; for(const h of state.hexes.values()) if(h.owner===faction.id) n+=h.units;
   return n;

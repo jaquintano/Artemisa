@@ -26,7 +26,8 @@ node tests/balance-sim.mjs 200   # simulación IA vs IA, sin navegador
 ## Mecánicas
 
 - **Economía en tres recursos**: regolito (construcción), helio-3 (tecnología),
-  agua (tope de población).
+  hielo (tope de población). El hielo solo se obtiene controlando Casquetes de
+  Hielo o construyendo Fusores: la base no lo produce.
 - **Cuatro terrenos** con producción y bonus defensivo propios, dibujados como
   iconos pixel art que ganan resolución al acercar el zoom.
 - **Movimiento de 1 sector por ronda** por guarnición.

@@ -93,7 +93,7 @@ function iceMarkup(){
 const MARKUP = {
   regolith: regolithMarkup(),
   helium3:  helium3Markup(),
-  water:    iceMarkup(),
+  ice:    iceMarkup(),
 };
 
 export const RESOURCE_ICON_DEFS = '<defs>' +
