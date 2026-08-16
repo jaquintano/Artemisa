@@ -2,9 +2,10 @@
 import { HEX_SIZE, ELEVATION, TERRAIN, BUILDING_TYPES, ZOOM_MIN, ZOOM_MAX, ZOOM_STEP, ICON_N_MIN, ICON_N_MAX, PIXEL_BASE } from '../config.js';
 import { state, sectorLabel, availableUnits, getHex } from '../state.js';
 import { supportersFor } from '../combat.js';
-import { axialToPixel, shade, pt, isoUnitToken } from './svg-utils.js';
+import { axialToPixel, shade, pt } from './svg-utils.js';
 import { TERRAIN_ICON_DEFS, ICON_PX, ICON_HALF, setIconResolution } from './pixelart.js';
 import { RESOURCE_ICON_DEFS, resourceIconUse } from './resource-icons.js';
+import { UNIT_ICON_DEFS, unitTokenUse } from './unit-icon.js';
 
 export let mapZoom = 1;
 
@@ -76,7 +77,7 @@ export function renderMap(){
   }
   const inList = (list,h) => list.some(s=>s.q===h.q && s.r===h.r);
 
-  let html = TERRAIN_ICON_DEFS + RESOURCE_ICON_DEFS;
+  let html = TERRAIN_ICON_DEFS + RESOURCE_ICON_DEFS + UNIT_ICON_DEFS;
   for(const [h,pos] of ordered){
     const {x,y,elev} = pos;
     const topY = y - elev;
@@ -119,8 +120,7 @@ export function renderMap(){
         : `<text class="hexicon" x="${x}" y="${topY-6}">${b.icon}</text>`;
     }
     if(h.units>0){
-      const uColor = faction ? faction.color : '#9AA0AC';
-      html += isoUnitToken(x, topY+10, uColor);
+      html += unitTokenUse(h.owner, x, topY+10);
       html += `<text class="hexunits" x="${x+15}" y="${topY+15}" text-anchor="middle">${h.units}</text>`;
       // candado: guarnición propia que ya agotó su movimiento en esta ronda
       if(h.owner===0 && availableUnits(h)===0){

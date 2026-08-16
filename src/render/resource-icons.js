@@ -99,8 +99,8 @@ const MARKUP = {
 export const RESOURCE_ICON_DEFS = '<defs>' +
   Object.entries(MARKUP).map(([kind, m]) => `<g id="res-${kind}">${m}</g>`).join('') + '</defs>';
 
-/* Tamaño sobre el mapa: el mismo que la ficha de guarnición, que isoUnitToken
-   dibuja con s=7.5, o sea 15 unidades de ancho. */
+/* Tamaño sobre el mapa, a la altura de la ficha de guarnición (ver
+   render/unit-icon.js, UNIT_ICON_SIZE). */
 export const RESOURCE_ICON_SIZE = 15;
 
 /* Coloca el icono centrado en (cx,cy). Requiere que RESOURCE_ICON_DEFS esté en el SVG. */

@@ -23,7 +23,12 @@ con ES modules, sin dependencias de runtime ni build step**.
    deliberadamente distintos: el terreno es pixel art que *se regenera* a más
    resolución al acercar el zoom (`pixelart.js`), mientras que unidades y recursos
    son vectoriales y se dibujan una sola vez, nítidos a cualquier escala
-   (`svg-utils.js`, `resource-icons.js`). No unifiques ambos criterios.
+   (`unit-icon.js`, `resource-icons.js`). No unifiques ambos criterios.
+   Los iconos que se repiten por el mapa se emiten como `<defs>` + `<use>`, no
+   inline: la ficha de guarnición aparece en decenas de sectores a la vez y
+   duplicar sus trazados en cada uno infla el DOM sin necesidad. Por eso el color
+   de facción se precalcula en una variante por facción en vez de pasarse por
+   parámetro en cada llamada.
 5. **La lógica de dominio no toca el DOM.** `config`, `state`, `combat`,
    `economy`, `ai` y `victory` deben poder ejecutarse en Node sin navegador.
    Cualquier necesidad de repintar se canaliza por `src/render/bus.js`.
@@ -47,6 +52,7 @@ src/
     svg-utils.js    geometría hexagonal y sombreado de color
     pixelart.js     iconos de terreno, regenerados según el zoom
     resource-icons.js  iconos vectoriales de regolito, helio-3 y hielo
+    unit-icon.js    ficha de guarnición, teñida con el color de cada facción
     map.js          render del mapa, zoom y scroll
     ui.js           paneles, registro de misión, leyenda
 tests/

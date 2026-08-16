@@ -27,14 +27,6 @@ export function shade(hexColor, factor){
 }
 export function pt(c){ return c[0].toFixed(1)+','+c[1].toFixed(1); }
 
-/* ---- ficha de tropas: pequeño cubo isométrico de 3 caras ---- */
-export function isoUnitToken(cx,cy,color){
-  const s = 7.5;
-  const top   = [[cx,cy-s],[cx+s,cy-s*0.5],[cx,cy],[cx-s,cy-s*0.5]];
-  const left  = [[cx-s,cy-s*0.5],[cx,cy],[cx,cy+s*0.9],[cx-s,cy+s*0.4]];
-  const right = [[cx,cy],[cx+s,cy-s*0.5],[cx+s,cy+s*0.4],[cx,cy+s*0.9]];
-  return `<polygon points="${top.map(pt).join(' ')}" fill="${shade(color,0.20)}" stroke="rgba(0,0,0,.45)" stroke-width=".6"></polygon>
-    <polygon points="${left.map(pt).join(' ')}" fill="${shade(color,-0.30)}" stroke="rgba(0,0,0,.45)" stroke-width=".6"></polygon>
-    <polygon points="${right.map(pt).join(' ')}" fill="${shade(color,-0.12)}" stroke="rgba(0,0,0,.45)" stroke-width=".6"></polygon>`;
-}
+/* La ficha de guarnición vive en render/unit-icon.js: dejó de ser un cubo
+   isométrico y pasó a ser un busto de infante teñido con el color de la facción. */
 
