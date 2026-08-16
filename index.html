@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CONQUISTA LUNAR // Panel de Mando Territorial</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div class="title-block">
+      <h1>◐ CONQUISTA LUNAR</h1>
+      <span class="sub">PANEL DE MANDO TERRITORIAL</span>
+    </div>
+    <div class="resbar" id="resbar"></div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="turn-badge" id="turnbadge">RONDA 1</div>
+      <div class="factions-strip" id="factionsstrip"></div>
+      <button class="btn btn-end" id="endturnbtn">FIN DE TURNO ▶</button>
+      <button class="btn btn-danger" id="restartbtn">REINICIAR</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="mapstage">
+      <div id="mapwrap">
+        <svg id="mapsvg" viewBox="0 0 100 100"></svg>
+      </div>
+      <div id="howto">
+        <button id="howtoclose">✕</button>
+        <b>CÓMO JUGAR</b><br>
+        1. Pulsa un sector propio para seleccionarlo.<br>
+        2. Construye instalaciones o entrena unidades desde el panel.<br>
+        3. Pulsa un sector adyacente para mover (propio) o atacar (rival/neutral).<br>
+        4. Investiga tecnología con Helio-3 para mejorar tu facción.<br>
+        5. Controla el 60% del mapa o elimina a tus rivales para ganar.
+        <hr style="border:none;border-top:1px solid var(--line);margin:8px 0;">
+        <b>MOVIMIENTO: 1 CASILLA POR TURNO</b><br>
+        Cada guarnición solo puede desplazarse <b>un sector por ronda</b>. Las tropas que se mueven o asaltan quedan marcadas con <b>⊘</b> y no pueden encadenar un segundo movimiento hasta la ronda siguiente. El panel indica cuántas unidades siguen <i>disponibles</i> en el sector seleccionado.
+        <hr style="border:none;border-top:1px solid var(--line);margin:8px 0;">
+        <b>APOYO DE SECTORES ADYACENTES</b><br>
+        Un sector aliado presta su guarnición como refuerzo si linda <b>a la vez</b> con el sector que combate y con el sector en disputa: es decir, si cubre el mismo frente.<br><br>
+        &nbsp;&nbsp;• <span style="color:var(--ok)">Verde</span>: sectores que refuerzan tu ataque.<br>
+        &nbsp;&nbsp;• <span style="color:var(--danger)">Rojo</span>: sectores que refuerzan al defensor.<br><br>
+        En una rejilla hexagonal dos sectores adyacentes comparten como máximo <b>2 vecinos</b>, así que cada bando puede recibir hasta dos apoyos. Las tropas de apoyo <b>no se desplazan ni sufren bajas</b>: solo suman fuerza. Un ataque frontal aislado contra una línea consolidada suele fracasar; conviene abrir el frente por un flanco donde el rival no tenga vecinos que lo cubran.
+        <hr style="border:none;border-top:1px solid var(--line);margin:8px 0;">
+        <b>REGLAS DE COMBATE</b><br>
+        Se compara la <b>fuerza de ataque</b> de las tropas que envías contra la <b>fuerza de defensa</b> del sector objetivo. Gana quien tenga más fuerza.<br><br>
+        <b>Fuerza de ataque</b> = unidades enviadas<br>
+        &nbsp;&nbsp;+1 si tienes <i>Blindaje Reforzado</i><br>
+        &nbsp;&nbsp;+ fuerza de los sectores de apoyo<br>
+        &nbsp;&nbsp;×1.25 si tienes <i>Relé Orbital</i><br><br>
+        <b>Fuerza de defensa</b> = unidades en el sector<br>
+        &nbsp;&nbsp;+1 si el defensor tiene <i>Blindaje Reforzado</i><br>
+        &nbsp;&nbsp;+1 en Tierras Altas o Cráter (bonus de terreno)<br>
+        &nbsp;&nbsp;+ bonus de instalación: Torreta +3, Base +5<br>
+        &nbsp;&nbsp;+1 si el sector es neutral (guarnición automática)<br>
+        &nbsp;&nbsp;+ fuerza de los sectores de apoyo<br><br>
+        Si ganas el ataque, capturas el sector y sobreviven <b>(enviadas − defensoras)</b> unidades, mínimo 1. Si pierdes, tus tropas enviadas se destruyen y al defensor le quedan <b>(defensoras − enviadas)</b> unidades. Por eso enviar solo 1-2 unidades contra un sector con torreta o en Cráter/Tierras Altas suele fallar: revisa siempre la defensa del sector en el panel antes de atacar.
+      </div>
+      <div id="zoomcontrols">
+        <button id="zoomin" title="Acercar mapa">＋</button>
+        <button id="zoomout" title="Alejar mapa">－</button>
+        <div id="zoomlevel">100%</div>
+      </div>
+    </div>
+
+    <div id="sidepanel">
+      <div class="panel-section" id="hexpanel">
+        <p class="panel-title">SECTOR SELECCIONADO</p>
+        <div class="empty-hint">Selecciona un sector del mapa para ver detalles y acciones disponibles.</div>
+      </div>
+      <div class="panel-section" style="max-height:220px;overflow-y:auto;">
+        <p class="panel-title">INVESTIGACIÓN TECNOLÓGICA</p>
+        <div id="techlist"></div>
+      </div>
+      <div class="panel-section" style="flex:1;display:flex;flex-direction:column;padding-bottom:0;overflow:hidden;">
+        <p class="panel-title">REGISTRO DE MISIÓN</p>
+        <div id="logpanel"></div>
+      </div>
+    </div>
+  </main>
+
+  <div class="legend" id="legend"></div>
+</div>
+
+<div id="overlay">
+  <h2 id="overlaytitle">FIN DE LA PARTIDA</h2>
+  <p id="overlaytext"></p>
+  <button class="btn btn-end" id="overlayrestart">NUEVA PARTIDA</button>
+</div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
