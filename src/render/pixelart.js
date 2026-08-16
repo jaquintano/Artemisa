@@ -86,6 +86,7 @@ export function rebuildTerrainIcons(){
     .map(([key,g])=>`<g id="icon-${key}">${gridToRects(g)}</g>`).join('') + '</defs>';
   ICON_PX = ICON_DISPLAY_SIZE/ICON_N;
   ICON_HALF = ICON_DISPLAY_SIZE/2;
+}
 
 /* ICON_N es un binding exportado (solo lectura para los importadores):
    este setter es la única vía para cambiar la resolución. */
