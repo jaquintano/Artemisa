@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CONQUISTA LUNAR // Panel de Mando Territorial</title>
+<title>ARTEMISA</title>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -11,13 +11,15 @@
 
   <header>
     <div class="title-block">
-      <h1>◐ CONQUISTA LUNAR</h1>
-      <span class="sub">PANEL DE MANDO TERRITORIAL</span>
+      <h1>◐ ARTEMISA</h1>
+      <button class="btn" id="howtotoggle" aria-pressed="true">CÓMO JUGAR</button>
     </div>
     <div class="resbar" id="resbar"></div>
+    <div class="statgroup">
+      <span class="group-label">EST. JUEGO</span>
+      <div class="group-body" id="statbody"></div>
+    </div>
     <div style="display:flex;align-items:center;gap:10px;">
-      <div class="turn-badge" id="turnbadge">RONDA 1</div>
-      <div class="factions-strip" id="factionsstrip"></div>
       <button class="btn btn-end" id="endturnbtn">FIN DE TURNO ▶</button>
       <button class="btn btn-danger" id="restartbtn">REINICIAR</button>
     </div>
@@ -41,7 +43,7 @@
         Las guarniciones <b>solo</b> se entrenan en la <b>Base Principal</b> y en los <b>Cuarteles Lunares</b> (▣, 20 regolito / 10 helio-3 / 5 hielo, +1 de defensa). El Cuartel puede levantarse en cualquier sector propio que no tenga ya otra instalación, así que decidir dónde plantarlo es lo que fija tu frente: sin un cuartel cerca, las tropas tienen que caminar desde la base a razón de <b>un sector por ronda</b>. Si pierdes todos tus puntos de recluta, dejas de poder reponer bajas.
         <hr style="border:none;border-top:1px solid var(--line);margin:8px 0;">
         <b>TOPE DE POBLACIÓN</b><br>
-        No puedes tener más guarniciones que <b>4 + tu producción de hielo por turno + tus sectores</b>. Cuenta el hielo que <i>entra cada ronda</i>, no el que tengas acumulado: acaparar no sirve de nada. Cada sector conquistado sube el tope en 1, y un Casquete de Hielo lo sube en 3 (la casilla más sus 2 de producción), así que son el objetivo más rentable del mapa.<br><br>
+        No puedes tener más guarniciones que <b>4 + tu producción de hielo por turno + tus sectores</b>. Cuenta el hielo que <i>entra cada ronda</i>, no el que tengas acumulado: acaparar no sirve de nada. Cada sector conquistado sube el tope en 1, y un Paraje Helado lo sube en 3 (la casilla más sus 2 de producción), así que son el objetivo más rentable del mapa.<br><br>
         Expandirse es lo que financia el ejército con el que sigues expandiéndote. Y al revés: si pierdes terreno, el tope encoge y puede quedar por debajo de tus tropas. Cuando pasa, el contador de la cabecera se pone <span style="color:var(--danger)">rojo</span> — no pierdes unidades, pero no podrás reclutar hasta recuperar sitio.
         <hr style="border:none;border-top:1px solid var(--line);margin:8px 0;">
         <b>MOVIMIENTO: 1 CASILLA POR TURNO</b><br>
@@ -68,6 +70,12 @@
         El blindaje lo llevan puestas las tropas: un sector <b>vacío</b> no se beneficia de él aunque lo tengas investigado. Una instalación sin guarnición cae con muy poco.<br><br>
         Si ganas el ataque, capturas el sector y sobreviven <b>(enviadas − defensoras)</b> unidades, mínimo 1. Si pierdes, tus tropas enviadas se destruyen y al defensor le quedan <b>(defensoras − enviadas)</b> unidades. Por eso enviar solo 1-2 unidades contra un sector con torreta o en Cráter/Tierras Altas suele fallar: revisa siempre la defensa del sector en el panel antes de atacar.
       </div>
+      <button id="logtoggle" title="Registro de misión" aria-pressed="false">🗒</button>
+      <div id="logpopup" hidden>
+        <p class="panel-title">REGISTRO DE MISIÓN</p>
+        <div id="logpanel"></div>
+      </div>
+
       <div id="zoomcontrols">
         <button id="zoomin" title="Acercar mapa">＋</button>
         <button id="zoomout" title="Alejar mapa">－</button>
@@ -76,17 +84,13 @@
     </div>
 
     <div id="sidepanel">
-      <div class="panel-section" id="hexpanel">
-        <p class="panel-title">SECTOR SELECCIONADO</p>
-        <div class="empty-hint">Selecciona un sector del mapa para ver detalles y acciones disponibles.</div>
-      </div>
-      <div class="panel-section" style="max-height:220px;overflow-y:auto;">
+      <div class="panel-section">
         <p class="panel-title">INVESTIGACIÓN TECNOLÓGICA</p>
         <div id="techlist"></div>
       </div>
-      <div class="panel-section" style="flex:1;display:flex;flex-direction:column;padding-bottom:0;overflow:hidden;">
-        <p class="panel-title">REGISTRO DE MISIÓN</p>
-        <div id="logpanel"></div>
+      <div class="panel-section" id="hexpanel">
+        <p class="panel-title">SECTOR SELECCIONADO</p>
+        <div class="empty-hint">Selecciona un sector del mapa para ver detalles y acciones disponibles.</div>
       </div>
     </div>
   </main>

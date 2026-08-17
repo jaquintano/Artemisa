@@ -28,9 +28,24 @@ document.getElementById('restartbtn').addEventListener('click', () => {
   if (confirm('¿Reiniciar la partida actual?')) startGame();
 });
 document.getElementById('overlayrestart').addEventListener('click', startGame);
-document.getElementById('howtoclose').addEventListener('click', () => {
-  document.getElementById('howto').style.display = 'none';
-});
+/* Dos paneles con el mismo patrón de interruptor: el botón refleja su estado en
+   aria-pressed, que es de lo que tira el CSS para resaltarlo en ámbar. */
+function conmutador(idBoton, idPanel, visibleAlEmpezar){
+  const boton = document.getElementById(idBoton);
+  const panel = document.getElementById(idPanel);
+  const aplicar = visible => {
+    panel.hidden = !visible;
+    boton.setAttribute('aria-pressed', String(visible));
+  };
+  boton.addEventListener('click', () => aplicar(panel.hidden));
+  aplicar(visibleAlEmpezar);
+  return aplicar;
+}
+
+const mostrarHowto = conmutador('howtotoggle', 'howto', true);
+conmutador('logtoggle', 'logpopup', false);
+// la ✕ del propio tutorial tiene que dejar el botón de la cabecera coherente
+document.getElementById('howtoclose').addEventListener('click', () => mostrarHowto(false));
 document.getElementById('zoomin').addEventListener('click', () => setZoom(mapZoom * ZOOM_STEP));
 document.getElementById('zoomout').addEventListener('click', () => setZoom(mapZoom / ZOOM_STEP));
 window.addEventListener('resize', () => { if (state) renderMap(); });

@@ -32,6 +32,20 @@ export function resIcon(kind, px){
   return resourceIconInline(kind, px);
 }
 
+/* Qué aporta una instalación ya construida: producción, defensa y si permite
+   reclutar. Se arma desde los datos de BUILDING_TYPES en vez de con textos fijos,
+   así que tocar un valor en config.js se refleja aquí solo. */
+export function ventajaEdificio(b){
+  const partes = [];
+  const prod = [['regolith',b.produce.regolith], ['helium3',b.produce.helium3], ['ice',b.produce.ice]]
+    .filter(([,n]) => n > 0)
+    .map(([kind,n]) => `+${n} ${resIcon(kind,12)}`);
+  if(prod.length) partes.push(prod.join(' ') + ' por turno');
+  if(b.defense)   partes.push(`+${b.defense} a la defensa del sector`);
+  if(b.trains)    partes.push('permite reclutar guarniciones');
+  return partes.length ? partes.join(' · ') : 'Sin efecto directo.';
+}
+
 /* Muestra solo los recursos que el coste realmente consume, para que una línea de
    coste no se llene de ceros. */
 export function costLabel(cost){
@@ -68,12 +82,16 @@ export function renderResbar(){
     chip('helium',  'helium3',  p.resources.helium3,  inc.helium3) +
     chip('ice',     'ice',      p.resources.ice,      inc.ice) +
     contadorPoblacion(p);
-  document.getElementById('turnbadge').textContent = `RONDA ${state.turn} / ${MAX_TURNS}`;
-  document.getElementById('factionsstrip').innerHTML = state.factions.map(f=>{
-    const t = territoryCount(f);
-    return `<span class="${f.alive?'':'fdead'}" style="font-size:10px;display:flex;align-items:center;gap:4px;">
-      <span class="fdot" style="background:${f.color}"></span>${t}</span>`;
-  }).join('');
+  renderStats();
+}
+
+/* Grupo «Est. Juego»: ronda en curso y territorio de cada facción. */
+export function renderStats(){
+  document.getElementById('statbody').innerHTML =
+    `<span class="ronda">RONDA ${state.turn} / ${MAX_TURNS}</span>` +
+    state.factions.map(f =>
+      `<span class="fterr ${f.alive?'':'fdead'}" title="${f.name}">
+        <span class="fdot" style="background:${f.color}"></span>${territoryCount(f)}</span>`).join('');
 }
 
 export function renderHexPanel(){
@@ -98,6 +116,7 @@ export function renderHexPanel(){
     <div class="stat-row"><span>Guarnición</span><b>${h.units} unidades</b></div>
     ${isMine ? `<div class="stat-row"><span>Disponibles este turno</span><b style="color:${avail>0?'var(--ok)':'var(--danger)'}">${avail}${spent>0?` (${spent} ya movidas)`:''}</b></div>` : ''}
     <div class="stat-row"><span>Instalación</span><b>${h.building?BUILDING_TYPES[h.building].name:'— ninguna —'}</b></div>
+    ${h.building?`<div class="empty-hint" style="margin-top:-4px;">${ventajaEdificio(BUILDING_TYPES[h.building])}</div>`:''}
     <div class="stat-row"><span>Fuerza de defensa base</span><b>${fmtNum(defDetailStatic.total)}</b></div>
     <div class="empty-hint" style="margin-top:-4px;">${describeDefense(defDetailStatic, h)}</div>`;
 
@@ -136,10 +155,7 @@ export function renderHexPanel(){
         <button class="btn" id="trainbtn" ${canTrain?'':'disabled'}>ENTRENAR</button>
       </div>
       ${topeLleno?`<div class="empty-hint">Tope de población alcanzado (${popCap(player)}). Se amplía conquistando sectores y aumentando tu producción de hielo por turno.</div>`:''}`;
-    } else {
-      out += `<div class="empty-hint" style="margin-top:10px;">Aquí no se pueden reclutar tropas: solo se entrena en la <b>Base Principal</b> y en los <b>Cuarteles Lunares</b>.</div>`;
     }
-    out += `<div class="empty-hint">Pulsa un sector adyacente en el mapa para mover o atacar con estas tropas.</div>`;
   }
 
   el.innerHTML = out;
@@ -208,14 +224,27 @@ export function renderLog(){
     state.log.slice().reverse().map(e=>`<div>[R${e.turn}] ${e.msg}</div>`).join('');
 }
 
+/* Producción por turno de un terreno, con los iconos de recurso. Solo lista lo que
+   realmente aporta, para que un terreno estéril no se llene de ceros. */
+function produccionTerreno(t){
+  const partes = [['regolith',t.regolith], ['helium3',t.helium3], ['ice',t.ice]]
+    .filter(([,n]) => n > 0)
+    .map(([kind,n]) => `+${n} ${resIcon(kind,15)}`);
+  return partes.length ? `<span class="prod">${partes.join(' ')}</span>` : '';
+}
+
 export function renderLegend(){
-  document.getElementById('legend').innerHTML = `
-    <span><i style="background:${TERRAIN.mare.color}"></i>Mare</span>
-    <span><i style="background:${TERRAIN.highlands.color}"></i>Tierras Altas</span>
-    <span><i style="background:${TERRAIN.crater.color}"></i>Cráter</span>
-    <span><i style="background:${TERRAIN.ice.color}"></i>Hielo</span>
-    ${state.factions.map(f=>`<span><i style="background:${f.color}"></i>${f.name}</span>`).join('')}
-  `;
+  const terrenos = ['mare','highlands','crater','ice'].map(k => {
+    const t = TERRAIN[k];
+    return `<span class="legend-item"><i style="background:${t.color}"></i>${t.name}
+      ${produccionTerreno(t)}</span>`;
+  }).join('');
+  const facciones = state.factions.map(f =>
+    `<span class="legend-item ${f.alive?'':'fdead'}"><i style="background:${f.color}"></i>${f.name}</span>`
+  ).join('');
+  document.getElementById('legend').innerHTML =
+    `<div class="legend-group"><span class="group-label">TERRENO</span>${terrenos}</div>` +
+    `<div class="legend-group"><span class="group-label">FACCIONES</span>${facciones}</div>`;
 }
 
 export function renderAll(){

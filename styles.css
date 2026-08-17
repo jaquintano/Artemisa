@@ -20,23 +20,35 @@
     --f1-dim:#6E4A2A;
     --f2:#7ED9A8;   /* IA 2 - Verde Helio */
     --f2-dim:#3A6E52;
+
+    /* Century Gothic viene con Office y no está garantizada; las alternativas son
+       geométricas de palo seco, del mismo aire, para que el fallback no desentone. */
+    --font-body:'Segoe UI','Segoe UI Variable',system-ui,-apple-system,sans-serif;
+    --font-title:'Century Gothic','URW Gothic','Questrial','Futura',var(--font-body);
   }
 
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;height:100%;background:var(--bg-void);color:var(--text-main);
-    font-family:'Courier New',ui-monospace,Consolas,monospace;}
+    font-family:var(--font-body);}
 
   #app{display:flex;flex-direction:column;height:100vh;overflow:hidden;}
 
   /* ---------- HEADER ---------- */
   header{display:flex;align-items:center;justify-content:space-between;gap:16px;
     padding:10px 18px;background:var(--bg-panel);border-bottom:1px solid var(--line);flex-wrap:wrap;}
-  .title-block{display:flex;align-items:baseline;gap:10px;}
-  .title-block h1{font-size:15px;letter-spacing:3px;margin:0;font-weight:700;color:var(--text-main);
-    font-family:'Trebuchet MS',ui-sans-serif,sans-serif;}
-  .title-block .sub{font-size:10px;color:var(--text-dim);letter-spacing:2px;}
-  .turn-badge{background:var(--bg-panel-2);border:1px solid var(--line);border-radius:3px;
-    padding:5px 12px;font-size:11px;letter-spacing:1px;color:var(--amber);}
+  .title-block{display:flex;align-items:center;gap:14px;}
+  .title-block h1{font-size:22px;letter-spacing:4px;margin:0;font-weight:700;color:var(--text-main);
+    font-family:var(--font-title);}
+  #howtotoggle[aria-pressed="true"]{border-color:var(--amber);color:var(--amber);}
+
+  /* Est. Juego: ronda y territorio por facción, al mismo tamaño que los recursos */
+  .statgroup,.legend-group{display:flex;align-items:center;gap:10px;background:var(--bg-panel-2);
+    border:1px solid var(--line);border-radius:4px;padding:6px 14px;}
+  .group-label{font-family:var(--font-title);font-size:11px;letter-spacing:2px;
+    color:var(--text-dim);white-space:nowrap;}
+  .group-body{display:flex;align-items:center;gap:14px;font-size:18px;}
+  .group-body .ronda{color:var(--amber);white-space:nowrap;}
+  .group-body .fterr{display:flex;align-items:center;gap:6px;white-space:nowrap;}
   /* Barra de recursos: letras e iconos un 50% por encima del resto de la interfaz
      (12px -> 18px, iconos 15px -> 22px), por ser el indicador que más se consulta. */
   .resbar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;}
@@ -52,8 +64,7 @@
   .res.regolith{color:#C9B896;}
   .res.helium{color:#8FE0E0;}
   .res.ice{color:#9FD3E8;}
-  .factions-strip{display:flex;gap:8px;align-items:center;}
-  .fdot{width:9px;height:9px;border-radius:50%;display:inline-block;}
+  .fdot{width:14px;height:14px;border-radius:50%;display:inline-block;flex-shrink:0;}
   .fdead{opacity:.25;text-decoration:line-through;}
   button{font-family:inherit;cursor:pointer;}
   .btn{background:var(--bg-panel-2);border:1px solid var(--line);color:var(--text-main);
@@ -96,11 +107,16 @@
   .hexicon{font-size:13px;fill:#fff;pointer-events:none;text-anchor:middle;
     paint-order:stroke;stroke:#000;stroke-width:2px;stroke-opacity:.55;}
 
+  /* Las secciones crecen a su altura natural y es el panel entero el que hace
+     scroll, y solo si la ventana no da para las dos: así «Investigación
+     tecnológica» se despliega completa siempre que quepa. */
   #sidepanel{width:340px;min-width:340px;background:var(--bg-panel);border-left:1px solid var(--line);
-    display:flex;flex-direction:column;overflow:hidden;}
-  .panel-section{border-bottom:1px solid var(--line);padding:14px 16px;}
-  .panel-title{font-size:10px;letter-spacing:2px;color:var(--text-dim);margin:0 0 10px 0;
-    font-family:'Trebuchet MS',ui-sans-serif,sans-serif;}
+    display:flex;flex-direction:column;overflow-y:auto;}
+  #sidepanel::-webkit-scrollbar{width:8px;}
+  #sidepanel::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
+  .panel-section{border-bottom:1px solid var(--line);padding:14px 16px;flex-shrink:0;}
+  .panel-title{font-size:13px;letter-spacing:2px;color:var(--amber);margin:0 0 10px 0;
+    font-family:var(--font-title);font-weight:700;}
   .hexinfo-name{font-size:15px;font-weight:700;margin-bottom:2px;}
   .hexinfo-terrain{font-size:11px;color:var(--text-dim);margin-bottom:10px;}
   .stat-row{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;color:var(--text-dim);}
@@ -121,16 +137,34 @@
   .tech-head{display:flex;justify-content:space-between;font-size:12px;font-weight:700;}
   .tech-desc{font-size:10px;color:var(--text-dim);margin:3px 0 6px;}
 
-  #logpanel{flex:1;overflow-y:auto;padding:10px 16px;font-size:11px;display:flex;flex-direction:column-reverse;}
+  /* Registro de misión: pop-up anclado a #mapstage, que no hace scroll, así que
+     se queda quieto en pantalla igual que los controles de zoom. */
+  #logtoggle{position:absolute;top:10px;right:26px;z-index:20;width:42px;height:42px;
+    font-size:20px;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;
+    background:var(--bg-panel);border:1px solid var(--line);color:var(--text-main);
+    border-radius:5px;box-shadow:0 2px 8px rgba(0,0,0,.5);}
+  #logtoggle:hover{border-color:var(--amber);}
+  #logtoggle[aria-pressed="true"]{border-color:var(--amber);color:var(--amber);}
+  #logpopup{position:absolute;top:60px;right:26px;z-index:20;width:340px;
+    max-height:calc(100% - 110px);display:flex;flex-direction:column;
+    background:var(--bg-panel);border:1px solid var(--line);border-radius:5px;
+    padding:12px 14px;box-shadow:0 2px 14px rgba(0,0,0,.6);}
+  #logpopup[hidden]{display:none;}
+  #logpanel{overflow-y:auto;font-size:12px;display:flex;flex-direction:column-reverse;}
   #logpanel div{padding:3px 0;border-bottom:1px dotted var(--line);color:var(--text-dim);}
   #logpanel div b{color:var(--amber);}
   #logpanel::-webkit-scrollbar{width:6px;}
   #logpanel::-webkit-scrollbar-thumb{background:var(--line);}
 
-  .legend{display:flex;flex-wrap:wrap;gap:10px;font-size:10px;color:var(--text-dim);padding:8px 16px;
+  /* Leyenda: dos grupos (terreno y facciones) al tamaño de la barra de recursos */
+  .legend{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:8px 16px;
     border-top:1px solid var(--line);background:var(--bg-panel);}
-  .legend span{display:flex;align-items:center;gap:4px;}
-  .legend i{width:10px;height:10px;display:inline-block;border-radius:2px;}
+  .legend-group{flex-wrap:wrap;gap:14px;}
+  .legend-item{display:flex;align-items:center;gap:7px;font-size:18px;color:var(--text-main);
+    white-space:nowrap;}
+  .legend-item i{width:16px;height:16px;display:inline-block;border-radius:3px;flex-shrink:0;
+    border:1px solid rgba(0,0,0,.4);}
+  .legend-item .prod{display:flex;align-items:center;gap:4px;font-size:15px;color:var(--text-dim);}
 
   #howto{position:absolute;top:10px;left:10px;background:var(--bg-panel);border:1px solid var(--line);
     border-radius:4px;padding:10px 12px;font-size:11px;max-width:300px;max-height:calc(100% - 20px);
@@ -159,5 +193,4 @@
 
   @media (max-width:820px){
     #sidepanel{width:280px;min-width:280px;}
-    .title-block .sub{display:none;}
   }

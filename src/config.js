@@ -19,7 +19,7 @@ export const TERRAIN = {
   mare:      { name:'Mare (llanura basáltica)', color:'#4A5568', regolith:1, helium3:0, ice:0, defense:0 },
   highlands: { name:'Tierras Altas',            color:'#9C8F72', regolith:1, helium3:1, ice:0, defense:1 },
   crater:    { name:'Cráter',                   color:'#3D3B42', regolith:0, helium3:2, ice:0, defense:1 },
-  ice:       { name:'Casquete de Hielo',        color:'#B9E3F0', regolith:0, helium3:0, ice:2, defense:0 },
+  ice:       { name:'Paraje Helado',            color:'#B9E3F0', regolith:0, helium3:0, ice:2, defense:0 },
 };
 export const TERRAIN_WEIGHTS = [['mare',.35],['highlands',.30],['crater',.20],['ice',.15]];
 
@@ -35,7 +35,7 @@ export const BUILDING_TYPES = {
   barracks:  { name:'Cuartel Lunar',      icon:'▣', trains:true,         cost:{regolith:20,helium3:10,ice:5}, produce:{regolith:0,helium3:0,ice:0}, defense:1, allowed:TODO_TERRENO },
   turret:    { name:'Torreta Defensiva',  icon:'▲', cost:{regolith:25,helium3:10,ice:0}, produce:{regolith:0,helium3:0,ice:0}, defense:3, allowed:TODO_TERRENO },
   lab:       { name:'Laboratorio',        icon:'◆', cost:{regolith:20,helium3:10,ice:0}, produce:{regolith:0,helium3:1,ice:0}, defense:0, allowed:TODO_TERRENO },
-  // La base no produce hielo: el hielo solo sale del Casquete de Hielo y del Fusor,
+  // La base no produce hielo: el hielo solo sale del Paraje Helado y del Fusor,
   // así que hay que ir a buscarlo al mapa en vez de recibirlo gratis.
   base:      { name:'Base Principal',     icon:'★', trains:true,         cost:{regolith:0,helium3:0,ice:0},   produce:{regolith:1,helium3:1,ice:0}, defense:5, allowed:TODO_TERRENO },
 };
@@ -58,8 +58,8 @@ export const DIRS = [[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
 export const ZOOM_MIN = 0.6, ZOOM_MAX = 2.4, ZOOM_STEP = 1.25;
 
 export const FACTION_DEFS = [
-  { id:0, name:'Estación Ártemis',   color:'#4FC3E8', dim:'#2A5A6E', isPlayer:true  },
-  { id:1, name:'Colectivo Vostok',   color:'#E8935D', dim:'#6E4A2A', isPlayer:false },
+  { id:0, name:'Proyecto Artemis',   color:'#4FC3E8', dim:'#2A5A6E', isPlayer:true  },
+  { id:1, name:'Grupo Vostok',       color:'#E8935D', dim:'#6E4A2A', isPlayer:false },
   { id:2, name:'Consorcio Helios',   color:'#7ED9A8', dim:'#3A6E52', isPlayer:false },
 ];
 

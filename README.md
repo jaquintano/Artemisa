@@ -29,8 +29,8 @@ node tests/balance-sim.mjs 200   # simulación IA vs IA, sin navegador
 ## Mecánicas
 
 - **Economía en tres recursos**: regolito (construcción), helio-3 (tecnología),
-  hielo (tope de población). El hielo solo se obtiene controlando Casquetes de
-  Hielo o construyendo Fusores: la base no lo produce.
+  hielo (tope de población). El hielo solo se obtiene controlando Parajes
+  Helados o construyendo Fusores: la base no lo produce.
 - **Tope de población** = 4 + producción de hielo por turno + sectores
   controlados. Cuenta el flujo, no lo acopiado: expandirse es lo que financia el
   ejército con el que sigues expandiéndote.
