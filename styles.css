@@ -39,6 +39,9 @@
   .title-block{display:flex;align-items:center;gap:14px;}
   .title-block h1{font-size:22px;letter-spacing:4px;margin:0;font-weight:700;color:var(--text-main);
     font-family:var(--font-title);}
+  /* align-self:flex-end la baja a la línea base del título, para que no flote */
+  .version{font-size:11px;color:var(--text-dim);letter-spacing:1px;align-self:flex-end;
+    padding-bottom:3px;}
   #howtotoggle[aria-pressed="true"]{border-color:var(--amber);color:var(--amber);}
 
   /* Est. Juego: ronda y territorio por facción, al mismo tamaño que los recursos */

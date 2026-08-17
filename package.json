@@ -1,13 +1,14 @@
 {
   "name": "artemisa",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Simulador de estrategia por turnos ambientado en la Luna. JavaScript puro, sin dependencias.",
   "type": "module",
   "scripts": {
     "start": "node tools/serve.mjs 8000",
     "check": "node tests/check-imports.mjs",
     "sim": "node tests/balance-sim.mjs 200",
-    "test": "node tests/check-imports.mjs && node tests/balance-sim.mjs 50"
+    "version:check": "node tools/version.mjs check",
+    "test": "node tools/version.mjs check && node tests/check-imports.mjs && node tests/balance-sim.mjs 50"
   },
   "license": "MIT",
   "private": true

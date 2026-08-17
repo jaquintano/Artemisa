@@ -4,7 +4,7 @@
  * los eventos del DOM y se registran los manejadores del bus. El resto de
  * módulos no se importan mutuamente entre capas, así que no hay ciclos.
  */
-import { ZOOM_STEP } from './config.js';
+import { ZOOM_STEP, APP_VERSION } from './config.js';
 import { state } from './state.js';
 import { startGame, endTurn } from './game.js';
 import { setRenderer, setGameOverHandler } from './render/bus.js';
@@ -28,6 +28,8 @@ document.getElementById('restartbtn').addEventListener('click', () => {
   if (confirm('¿Reiniciar la partida actual?')) startGame();
 });
 document.getElementById('overlayrestart').addEventListener('click', startGame);
+document.getElementById('version').textContent = 'v' + APP_VERSION;
+
 /* Dos paneles con el mismo patrón de interruptor: el botón refleja su estado en
    aria-pressed, que es de lo que tira el CSS para resaltarlo en ámbar. */
 function conmutador(idBoton, idPanel, visibleAlEmpezar){

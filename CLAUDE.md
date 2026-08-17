@@ -66,7 +66,22 @@ tests/
   balance-sim.mjs   simulación IA vs IA sin navegador
 tools/
   serve.mjs         servidor estático de desarrollo (`npm start`), sin dependencias
+  version.mjs       consulta, incrementa y comprueba el número de versión
 ```
+
+### Número de versión
+
+La fuente de verdad es `APP_VERSION` en `src/config.js`, porque es lo que el
+navegador puede importar sin pedir un fichero extra; `package.json` se mantiene
+sincronizado desde `tools/version.mjs`. **No edites la versión a mano en los dos
+sitios**: usa el script y no podrán divergir. `npm test` ejecuta
+`version.mjs check`, que falla si alguien lo hace igualmente.
+
+El incremento es automático: `.claude/auto-deploy.sh` llama a `version.mjs bump`
+antes de cada publicación y lo pliega en el commit de cabeza con `--amend`, así
+que cada cambio que llega a GitHub lleva su propia versión sin ensuciar el
+historial con commits de sólo-versión. Es seguro porque ese commit todavía no
+está en el remoto. La versión se muestra junto al título en la cabecera.
 
 ### Regla de dependencias
 
