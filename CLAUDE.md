@@ -17,19 +17,25 @@ con ES modules, sin dependencias de runtime ni build step**.
    `src/main.js` como módulo directamente.
 3. **Todo el texto de la interfaz en español**, incluidos los mensajes del
    registro de misión y el tutorial.
-4. **Gráficos generados por código.** El terreno, las unidades y los recursos son
-   SVG dibujado mediante rectángulos/polígonos calculados en tiempo de ejecución.
-   No se incorporan ficheros de imagen ni sprites externos. Conviven dos estilos
-   deliberadamente distintos: el terreno es pixel art que *se regenera* a más
-   resolución al acercar el zoom (`pixelart.js`), mientras que unidades y recursos
-   son vectoriales y se dibujan una sola vez, nítidos a cualquier escala
-   (`unit-icon.js`, `resource-icons.js`). No unifiques ambos criterios.
+4. **Gráficos generados por código y 100 % vectoriales.** Terreno, unidades y
+   recursos son SVG calculado en tiempo de ejecución: nada de ficheros de imagen
+   ni sprites externos. Todo se dibuja una sola vez y lo reescala el navegador,
+   nítido a cualquier zoom (`terrain-icons.js`, `unit-icon.js`,
+   `resource-icons.js`). Hubo una etapa en que el terreno era pixel art que se
+   regeneraba a más resolución al acercar el zoom; se retiró por decisión del
+   mantenedor y con él toda su maquinaria (`pixelart.js`, `PIXEL_BASE`,
+   `ICON_N_*`, `setIconResolution()`). No lo reintroduzcas.
    Los iconos que se repiten por el mapa se emiten como `<defs>` + `<use>`, no
-   inline: la ficha de guarnición aparece en decenas de sectores a la vez y
-   duplicar sus trazados en cada uno infla el DOM sin necesidad. Por eso el color
-   de facción se precalcula en una variante por facción en vez de pasarse por
-   parámetro en cada llamada.
-5. **La lógica de dominio no toca el DOM.** `config`, `state`, `combat`,
+   inline: duplicar sus trazados en decenas de sectores infla el DOM sin
+   necesidad. Por eso la ficha de guarnición precalcula una variante por facción
+   en vez de recibir el color por parámetro en cada llamada.
+5. **El relieve del terreno no lleva color propio.** `terrain-icons.js` dibuja
+   solo blancos y negros semitransparentes, de modo que el tono lo aporta siempre
+   el relleno de debajo: el color del terreno si el sector es neutral y el de la
+   facción si tiene dueño. Gracias a eso basta un juego de baldosas para los dos
+   casos. Si metes un color fijo ahí, los sectores conquistados dejarán de verse
+   coherentes.
+6. **La lógica de dominio no toca el DOM.** `config`, `state`, `combat`,
    `economy`, `ai` y `victory` deben poder ejecutarse en Node sin navegador.
    Cualquier necesidad de repintar se canaliza por `src/render/bus.js`.
 
@@ -50,7 +56,7 @@ src/
   render/
     bus.js          inversión de dependencia lógica -> presentación
     svg-utils.js    geometría hexagonal y sombreado de color
-    pixelart.js     iconos de terreno, regenerados según el zoom
+    terrain-icons.js   relieve vectorial de las cuatro baldosas de terreno
     resource-icons.js  iconos vectoriales de regolito, helio-3 y hielo
     unit-icon.js    ficha de guarnición, teñida con el color de cada facción
     map.js          render del mapa, zoom y scroll
@@ -71,8 +77,7 @@ módulos de lógica**: rompe la ejecución headless y crea ciclos.
 
 `state` se exporta desde `state.js` como binding vivo (`export let`). Los módulos
 que lo importan lo leen actualizado, pero **no pueden reasignarlo**: para
-sustituir la partida entera hay que llamar a `setState()`. Lo mismo aplica a
-`ICON_N` en `pixelart.js` (`setIconResolution()`) .
+sustituir la partida entera hay que llamar a `setState()`.
 
 ## Cómo ejecutarlo
 

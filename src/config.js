@@ -51,7 +51,6 @@ export const DIRS = [[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
 
 
 export const ZOOM_MIN = 0.6, ZOOM_MAX = 2.4, ZOOM_STEP = 1.25;
-export const ICON_N_MIN = 4, ICON_N_MAX = 18;
 
 export const FACTION_DEFS = [
   { id:0, name:'Estación Ártemis',   color:'#4FC3E8', dim:'#2A5A6E', isPlayer:true  },
@@ -62,6 +61,3 @@ export const FACTION_DEFS = [
 /* Proporción de la guarnición vecina que se aporta como apoyo (1 = fuerza completa).
    Bajarlo a 0.5 hace las líneas de frente menos decisivas. */
 export const SUPPORT_FACTOR = 1;
-
-// resolución NxN de referencia de los iconos pixel art a zoom 1×
-export const PIXEL_BASE = 8;

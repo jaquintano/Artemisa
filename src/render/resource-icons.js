@@ -1,11 +1,9 @@
 /* Iconos vectoriales de los tres recursos: regolito, helio-3 y hielo.
  *
- * Por qué no son pixel art: los iconos de terreno (render/pixelart.js) se
- * regeneran a distinta resolución cada vez que cambia el zoom, porque su gracia
- * es justamente verse pixelados. Los recursos son lo contrario: deben leerse
- * igual de nítidos a cualquier escala, así que se describen una sola vez como
- * polígonos y es el navegador quien los rasteriza. Mismo criterio que la ficha
- * de guarnición de svg-utils.js.
+ * Se describen una sola vez como polígonos y es el navegador quien los rasteriza,
+ * así que se leen igual de nítidos a cualquier escala. Mismo criterio que la
+ * ficha de guarnición (unit-icon.js) y las baldosas de terreno
+ * (terrain-icons.js).
  *
  * Toda la geometría está expresada sobre una rejilla de 24x24 y se reescala al
  * emitirla, así que las coordenadas de este fichero no dependen ni del zoom ni

@@ -1,9 +1,9 @@
 /* Renderizado del mapa hexagonal y control de zoom/scroll. */
-import { HEX_SIZE, ELEVATION, TERRAIN, BUILDING_TYPES, ZOOM_MIN, ZOOM_MAX, ZOOM_STEP, ICON_N_MIN, ICON_N_MAX, PIXEL_BASE } from '../config.js';
+import { HEX_SIZE, ELEVATION, TERRAIN, BUILDING_TYPES, ZOOM_MIN, ZOOM_MAX, ZOOM_STEP } from '../config.js';
 import { state, sectorLabel, availableUnits, getHex } from '../state.js';
 import { supportersFor } from '../combat.js';
 import { axialToPixel, shade, pt } from './svg-utils.js';
-import { TERRAIN_ICON_DEFS, ICON_PX, ICON_HALF, setIconResolution } from './pixelart.js';
+import { TERRAIN_TILE_DEFS, terrainTileUse } from './terrain-icons.js';
 import { RESOURCE_ICON_DEFS, resourceIconUse } from './resource-icons.js';
 import { UNIT_ICON_DEFS, unitTokenUse } from './unit-icon.js';
 
@@ -20,8 +20,7 @@ export function setZoom(z){
   const fracY = (wrap.scrollTop + wrap.clientHeight/2) / oldScrollH;
 
   mapZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
-  // la resolución del pixel art acompaña al zoom (ver render/pixelart.js)
-  setIconResolution(Math.max(ICON_N_MIN, Math.min(ICON_N_MAX, Math.round(PIXEL_BASE*mapZoom))));
+  // el terreno ya no depende del zoom: es vectorial y lo reescala el navegador
   if(state) renderMap();
 
   // recentra el scroll sobre el mismo punto del mapa que se estaba viendo antes de hacer zoom
@@ -77,7 +76,7 @@ export function renderMap(){
   }
   const inList = (list,h) => list.some(s=>s.q===h.q && s.r===h.r);
 
-  let html = TERRAIN_ICON_DEFS + RESOURCE_ICON_DEFS + UNIT_ICON_DEFS;
+  let html = TERRAIN_TILE_DEFS + RESOURCE_ICON_DEFS + UNIT_ICON_DEFS;
   for(const [h,pos] of ordered){
     const {x,y,elev} = pos;
     const topY = y - elev;
@@ -110,7 +109,7 @@ export function renderMap(){
 
     html += `<polygon class="hexface" points="${corners.map(pt).join(' ')}" fill="${topFill}" stroke="${faction?'rgba(0,0,0,.35)':'rgba(255,255,255,.18)'}"></polygon>`;
 
-    html += `<use href="#icon-${h.terrain}" transform="translate(${(x-ICON_HALF).toFixed(1)},${(topY-ICON_HALF).toFixed(1)}) scale(${ICON_PX.toFixed(3)})"></use>`;
+    html += terrainTileUse(h.terrain, x, topY);
 
     if(h.building){
       const b = BUILDING_TYPES[h.building];
