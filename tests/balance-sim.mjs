@@ -71,15 +71,12 @@ console.log(`Territorio medio del líder final   : ${avgLeader}%`);
 
 if (decisive / games < 0.5) {
   console.log('\n⚠  Más de la mitad de las partidas agotan el límite de rondas.');
-  console.log('   Descartado como causa: SUPPORT_FACTOR (probado 0 a 1, sin efecto en la');
-  console.log('   resolución) y los recursos, que se acumulan sin gastar (~750 de regolito).');
-  console.log('   Sospechoso principal: el TOPE DE POBLACIÓN. Con la fórmula actual');
-  console.log('   (4 + producción de hielo + sectores) las facciones terminan al ~96 % del');
-  console.log('   tope, así que el ejército solo crece si crece el territorio, y el');
-  console.log('   territorio solo crece si crece el ejército: un equilibrio que se');
-  console.log('   autolimita. El ritmo de 1 recluta por turno de aiTakeTurn() ya no es el');
-  console.log('   freno principal, porque casi no queda margen bajo el tope.');
-  console.log('   Ver CLAUDE.md, "Incidencia abierta".');
+  console.log('   La causa histórica (la IA dispersaba las tropas de una en una) está');
+  console.log('   resuelta: concentrarTropas() en ai.js. Lo que queda es que las partidas');
+  console.log('   piden unas 65 rondas para decidirse y MAX_TURNS las corta en 60.');
+  console.log('   Medido: a 70 rondas se resuelve el 70 %, a 80 el 84 %, a 100 el 96 %.');
+  console.log('   Descartados con datos: SUPPORT_FACTOR, los recursos, el tope de');
+  console.log('   población y la cadencia de reclutamiento. Ver CLAUDE.md.');
 } else {
   console.log('\n✓ El mapa no se congela: la mayoría de partidas se resuelven por conquista.');
 }

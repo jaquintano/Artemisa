@@ -155,21 +155,27 @@ Diagnóstico ya realizado (no hace falta repetirlo):
 - **No es el apoyo.** Probado con `SUPPORT_FACTOR` a 0 / 0.25 / 0.5 / 1: ninguna
   partida se resuelve en ningún caso. Más apoyo incluso *acelera* la expansión,
   porque favorece a quien ya tiene frente formado.
-**Causa real, medida: la IA dispersa las tropas de una en una y nunca las
-concentra.** Foto de la ronda 60 sobre 30 partidas, 434 sectores propios con
-frontera:
+**RESUELTA la causa principal.** Era que la IA dispersaba las tropas de una en una
+y nunca las concentraba. Medido en su día: el 72,4 % de sus sectores con frontera
+no tenían tropas que enviar (guarnecían 1 unidad y `aiTakeTurn()` envía
+`availableUnits-1`), el 58,8 % de todos los sectores tenían exactamente 1 unidad,
+y a los frentes bloqueados les faltaban solo **0,6 puntos de fuerza**: no les
+faltaba ejército, les faltaba juntarlo.
 
-- **72,4 %** no tienen tropas que enviar: `aiTakeTurn()` deja siempre 1 unidad de
-  guarnición y envía `availableUnits-1`, así que un sector con 1 unidad envía 0.
-- **58,8 % de todos los sectores tienen exactamente 1 unidad.** Tras conquistar,
-  los supervivientes son `max(1, enviadas - defensoras)`, que casi siempre es 1, y
-  ese sector queda inmovilizado para siempre.
-- **0 %** podrían atacar y ganar. Pero a los que lo intentarían solo les faltan
-  **0,6 puntos de fuerza** de media: no necesitan un ejército mayor, necesitan
-  juntar el que ya tienen.
+El arreglo es `concentrarTropas()` en `ai.js`: los sectores que no lindan con nadie
+hostil son inalcanzables ese turno, así que vuelcan su guarnición hacia el frente
+por el camino más corto. Efecto medido, 200 partidas:
 
-La IA no mueve tropas entre sectores propios: solo ataca desde donde están. El
-ejército se fragmenta en unidades sueltas incapaces de nada.
+| | antes | después |
+|---|---|---|
+| partidas resueltas | 0 % | **41,5 %** |
+| territorio del líder | 14,2 % | **51,3 %** |
+
+**Lo que queda**: las partidas piden unas 65 rondas para decidirse y `MAX_TURNS`
+las corta en 60. Barrido con la concentración activa: 70 rondas → 70,5 %
+resueltas; 80 → 84 %; 90 → 89,5 %; 100 → 96 %. Subir `MAX_TURNS` a 80 es el
+cambio de una línea que más resolución compra; queda a decisión del mantenedor
+porque alarga la partida.
 
 Descartado con mediciones (no repitas estas pruebas):
 
@@ -204,26 +210,26 @@ reclutamiento a base y cuarteles costó la mitad del territorio (26,4 → 12,5 %
 precio esperado de la regla; el hundimiento hasta 7,7 % fue en cambio un fallo,
 un umbral mal calculado que dejaba a la IA con un único punto de recluta.
 
-Línea de ataque que sí ataca la causa, a decidir por el mantenedor: **dar a la IA
-una fase de concentración** antes de atacar — mover guarniciones de sectores
-interiores (los que no lindan con nadie hostil) hacia el frente, para formar pilas
-capaces de romper. Con un déficit medio de 0,6 puntos, juntar dos guarniciones de
-1 unidad ya desbloquea la mayoría de los frentes. Ojo con el invariante de
-movimiento: 1 sector por ronda y `movedUnits` marca a quien ya se movió.
+Barrido de la base de `popCap()` **con la concentración ya activa** (200 partidas
+por valor, mapa de 61 sectores):
 
-Barrido de la base de `popCap()` (200 partidas cada valor, mapa de 61 sectores):
+| base | resueltas | líder | presión del tope |
+|------|-----------|-------|------------------|
+|  4   | 42,5 %    | 52,2 %| 57 % |
+|  6   | 36,5 %    | 52,7 %| 42 % |
+|  8   | 39,0 %    | 52,9 %| 38 % |
+| 10   | 42,5 %    | 54,2 %| 35 % |
+| 12   | 32,0 %    | 52,4 %| 33 % |
+| 16   | 38,5 %    | 52,4 %| 30 % |
 
-| base | resueltas | líder | sectores | presión del tope |
-|------|-----------|-------|----------|------------------|
-|  4   | 0 %       | 14,0 %|  8,5     | 98 % |
-|  8   | 0 %       | 16,5 %| 10,0     | 96 % |
-| 12   | 0 %       | 17,3 %| 10,6     | 95 % |
-| 20   | 0 %       | 17,7 %| 10,8     | 91 % |
-| 30   | 0 %       | 17,6 %| 10,7     | 83 % |
+Ningún valor mejora la resolución: las diferencias son ruido a 200 partidas. Lo
+que sí cambia es la presión, que se desploma al subir la base. **Se deja en 4**
+porque es la que conserva la tensión que la regla persigue; subirla solo vuelve el
+tope decorativo. Ojo: antes de la concentración esa presión era del 98 % y el tope
+parecía el culpable — lo parecía porque el ejército no llegaba a usarse, no porque
+faltara techo.
 
-Ninguno resuelve partidas. A partir de 12 la mejora se agota y el tope empieza a
-dejar de apretar, que es justo la tensión que la regla persigue. **Conviene medir
-cada cambio con la simulación** en vez de ajustar a ojo.
+**Conviene medir cada cambio con la simulación** en vez de ajustar a ojo.
 
 ## Estilo de código
 
