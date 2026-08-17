@@ -1,4 +1,4 @@
-# CLAUDE.md — Conquista Lunar
+# CLAUDE.md — Artemisa
 
 Instrucciones permanentes para trabajar en este repositorio.
 

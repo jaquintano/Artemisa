@@ -1,4 +1,4 @@
-# Conquista Lunar
+# Artemisa
 
 Simulador de estrategia por turnos sobre la superficie lunar. Tres facciones
 compiten por el control territorial de un mapa hexagonal de 61 sectores

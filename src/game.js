@@ -44,7 +44,7 @@ export function startGame(){
   setState(newState());
   produceResources();
   state.log = [];   // descarta el mensaje de producción del reparto inicial
-  log('Comienza la campaña de conquista lunar.');
+  log('Comienza la campaña por el control de la superficie lunar.');
   hideGameOver();
   requestRender();
 }
