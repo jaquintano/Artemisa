@@ -155,12 +155,19 @@ Diagnóstico ya realizado (no hace falta repetirlo):
 - **No es el apoyo.** Probado con `SUPPORT_FACTOR` a 0 / 0.25 / 0.5 / 1: ninguna
   partida se resuelve en ningún caso. Más apoyo incluso *acelera* la expansión,
   porque favorece a quien ya tiene frente formado.
-- **No son los recursos ni el tope de población.** En la ronda 60 el líder
-  acumula ~660 de regolito sin gastar y un tope de población muy por encima de
-  las ~42 unidades que llega a reclutar.
-- **La causa está en el ritmo de reclutamiento**: `aiTakeTurn()` entrena **una
-  sola unidad por turno** como mucho, ritmo insuficiente para conquistar el mapa
-  en 60 rondas. Ese techo no lo movió ninguno de los cambios posteriores.
+- **No son los recursos.** En la ronda 60 el líder acumula ~750 de regolito sin
+  gastar: le sobra con qué pagar, no tiene dónde meterlo.
+- **Sí es el tope de población**, desde que pasó a `4 + producción de hielo +
+  sectores`. Las facciones terminan al **~96 %** del tope (18,0 tropas para 18,8),
+  así que el ejército solo crece si crece el territorio y el territorio solo crece
+  si crece el ejército: un equilibrio que se autolimita.
+- **El ritmo de reclutamiento ya no es el freno principal.** `aiTakeTurn()`
+  entrena como mucho una unidad por turno, y durante mucho tiempo ese fue el
+  sospechoso; pero con el tope actual apenas queda margen bajo él, así que subir
+  la cadencia sin tocar el tope no cambiaría gran cosa. **Este punto se revisó:
+  el diagnóstico anterior, que descartaba el tope y culpaba al reclutamiento, era
+  correcto con la fórmula vieja (`8 + 2·hielo acopiado`) y dejó de serlo con la
+  nueva.**
 
 Medidas sucesivas del territorio medio del líder al final (misma simulación):
 
@@ -170,18 +177,21 @@ Medidas sucesivas del territorio medio del líder al final (misma simulación):
 | `RADIUS=5`, reclutamiento libre                   |  91  | 26,4 % (~24 sect.) |
 | `RADIUS=5` + reclutamiento solo en base/cuartel   |  91  |  7,7 % (~7 sect.) |
 | …y la IA priorizando cuarteles (`ai.js`)          |  91  | 12,5 % (~11 sect.) |
+| …y tope de población ligado a la expansión        |  91  | 10,7 % (~10 sect.) |
+| …y 5 guarniciones iniciales en vez de 6           |  91  |  9,6 % (~9 sect.) |
+| `RADIUS=4` (mapa actual)                          |  61  | 14,2 % (~9 sect.) |
 
-Lecturas: encoger el mapa ayuda mucho en proporción (17,3 → 26,4 %) pero **no
-basta** para resolver partidas. Limitar el reclutamiento cuesta más o menos la
-mitad del territorio del líder (26,4 → 12,5 %), que es el precio esperado de la
-regla; el hundimiento hasta 7,7 % era en cambio un fallo: el umbral de prioridad
-de cuarteles estaba mal calculado y la IA se quedaba con un único punto de
-recluta. El techo de 1 unidad/turno sigue mandando por encima de todo.
+Lecturas: encoger el mapa ayuda en proporción pero **no basta** para resolver
+partidas — en sectores absolutos el líder lleva clavado en 9-11 desde hace varios
+cambios, y lo que sube es el porcentaje porque el denominador baja. Limitar el
+reclutamiento a base y cuarteles costó la mitad del territorio (26,4 → 12,5 %),
+precio esperado de la regla; el hundimiento hasta 7,7 % fue en cambio un fallo,
+un umbral mal calculado que dejaba a la IA con un único punto de recluta.
 
-Líneas de ataque razonables, a decidir por el mantenedor: permitir a la IA
-reclutar en proporción a sus puntos de recluta, subir `MAX_TURNS`, o bajar
-`DOMINANCE_RATIO`. **Conviene medir cada cambio con la simulación** en vez de
-ajustar a ojo.
+Líneas de ataque razonables, a decidir por el mantenedor: subir la base del tope
+(el `4` de `popCap()`), permitir a la IA reclutar en proporción a sus puntos de
+recluta, subir `MAX_TURNS`, o bajar `DOMINANCE_RATIO`. **Conviene medir cada
+cambio con la simulación** en vez de ajustar a ojo.
 
 ## Estilo de código
 

@@ -1,8 +1,8 @@
 # Conquista Lunar
 
 Simulador de estrategia por turnos sobre la superficie lunar. Tres facciones
-compiten por el control territorial de un mapa hexagonal de 91 sectores
-(6 de lado).
+compiten por el control territorial de un mapa hexagonal de 61 sectores
+(5 de lado).
 
 JavaScript puro con ES modules: **sin dependencias, sin build step**.
 

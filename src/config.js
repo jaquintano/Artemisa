@@ -1,8 +1,8 @@
 /* Constantes de dominio y parámetros de balance. Sin estado mutable ni DOM. */
 
 // Radio del mapa hexagonal. El lado del hexágono grande mide RADIUS+1 sectores y
-// el total es 3·R²+3·R+1, así que R=5 son 6 de lado y 91 sectores.
-export const RADIUS = 5;
+// el total es 3·R²+3·R+1, así que R=4 son 5 de lado y 61 sectores.
+export const RADIUS = 4;
 export const HEX_SIZE = 30;
 export const MAX_TURNS = 60;
 export const DOMINANCE_RATIO = 0.6;    // % de mapa para victoria por dominancia
