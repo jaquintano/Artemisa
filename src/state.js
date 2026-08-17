@@ -32,7 +32,9 @@ export function newState(){
     h.terrain = 'mare';
     h.owner = i;
     h.building = 'base';
-    h.units = 6;
+    // 5 encaja justo con el tope inicial (4 + 0 de hielo + 1 sector): se empieza
+    // al completo, no por encima, que se leería como un fallo del juego.
+    h.units = 5;
   });
 
   // guarniciones neutrales

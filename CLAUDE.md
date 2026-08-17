@@ -133,8 +133,10 @@ introduce una dependencia del DOM en la capa de lógica, deja de ejecutarse.
   con el que sigues expandiéndote. Vive en `economy.js` y no en `state.js` porque
   necesita `projectedIncome()`; traerlo al estado crearía un ciclo de imports.
   Una facción puede quedar **por encima** del tope al perder terreno o casquetes:
-  eso solo le impide reclutar, nunca destruye tropas ya existentes. De hecho todas
-  arrancan así (6 unidades para un tope de 5) hasta su primera conquista.
+  eso solo le impide reclutar, nunca destruye tropas ya existentes. Cuando pasa,
+  el contador de la barra superior se pinta en rojo (`.res.pop.excedido`). Las
+  guarniciones iniciales son 5 justamente para cuadrar con el tope de arranque
+  (4 + 0 de hielo + 1 sector): se empieza al completo, no por encima.
 - **Blindaje Reforzado en defensa**: solo cuenta si el sector atacado **tiene
   guarnición**. El blindaje lo llevan puestas las tropas, así que un sector vacío
   no se beneficia por mucho que su facción tenga la tecnología. En ataque no

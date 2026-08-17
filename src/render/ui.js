@@ -44,6 +44,17 @@ export function costLabel(cost){
 /* Tamaño del icono en la barra superior: un 50% sobre los 15 px del panel lateral. */
 const RESBAR_ICON = 22;
 
+/* El tope de población puede quedar por debajo de las tropas ya reclutadas: basta
+   perder un sector o un casquete de hielo para que encoja. No destruye tropas,
+   pero sí bloquea el reclutamiento, así que conviene que cante a la vista.
+   Solo se marca cuando lo SUPERA; igualarlo es estar al completo, no un problema. */
+function contadorPoblacion(faction){
+  const tropas = totalUnits(faction), tope = popCap(faction);
+  const excedido = tropas > tope;
+  return `<div class="res pop${excedido ? ' excedido' : ''}"
+    title="${excedido ? 'Superas el tope: no puedes reclutar hasta ampliarlo o perder unidades' : 'Guarniciones / tope de población'}">👥 ${tropas}/${tope}</div>`;
+}
+
 export function renderResbar(){
   const p = state.factions[0];
   // el incremento sale del mismo cálculo que luego cobra produceResources()
@@ -56,7 +67,7 @@ export function renderResbar(){
     chip('regolith','regolith', p.resources.regolith, inc.regolith) +
     chip('helium',  'helium3',  p.resources.helium3,  inc.helium3) +
     chip('ice',     'ice',      p.resources.ice,      inc.ice) +
-    `<div class="res pop">👥 ${totalUnits(p)}/${popCap(p)}</div>`;
+    contadorPoblacion(p);
   document.getElementById('turnbadge').textContent = `RONDA ${state.turn} / ${MAX_TURNS}`;
   document.getElementById('factionsstrip').innerHTML = state.factions.map(f=>{
     const t = territoryCount(f);

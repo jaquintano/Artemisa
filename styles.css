@@ -45,6 +45,8 @@
   /* el incremento previsto acompaña sin competir con la cifra principal */
   .res .res-inc{font-size:13px;opacity:.75;font-weight:400;}
   .res.pop{color:var(--text-dim);}
+  /* tropas por encima del tope: no se pierde nada, pero no se puede reclutar */
+  .res.pop.excedido{color:var(--danger);border-color:var(--danger);font-weight:700;}
   /* iconos de recurso: SVG vectorial en línea, nítido a cualquier escala */
   .ricon{vertical-align:-.18em;flex-shrink:0;}
   .res.regolith{color:#C9B896;}
