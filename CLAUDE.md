@@ -126,6 +126,19 @@ introduce una dependencia del DOM en la capa de lógica, deja de ejecutarse.
   2 vecinos**, así que cada bando recibe como máximo 2 apoyos, y son las mismas
   dos casillas para ambos: controlarlas es el objetivo táctico real del frente.
   Las tropas de apoyo no se desplazan ni sufren bajas.
+- **Tope de población**: `4 + producción de hielo por turno + sectores
+  controlados`, en `popCap()` de `economy.js`. Depende del *flujo* de hielo y no
+  del montón acumulado, a propósito: acaparar no sirve, hay que sostener la
+  producción. Y como cada sector suma, expandirse es lo que financia el ejército
+  con el que sigues expandiéndote. Vive en `economy.js` y no en `state.js` porque
+  necesita `projectedIncome()`; traerlo al estado crearía un ciclo de imports.
+  Una facción puede quedar **por encima** del tope al perder terreno o casquetes:
+  eso solo le impide reclutar, nunca destruye tropas ya existentes. De hecho todas
+  arrancan así (6 unidades para un tope de 5) hasta su primera conquista.
+- **Blindaje Reforzado en defensa**: solo cuenta si el sector atacado **tiene
+  guarnición**. El blindaje lo llevan puestas las tropas, así que un sector vacío
+  no se beneficia por mucho que su facción tenga la tecnología. En ataque no
+  aplica la restricción: ahí siempre hay tropas enviadas.
 - **Combate**: gana quien tenga más fuerza; el desglose completo debe seguir
   apareciendo en el registro de misión y en la vista previa. No sustituyas el
   modelo determinista por tiradas aleatorias sin pedirlo explícitamente.

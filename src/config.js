@@ -26,7 +26,7 @@ export const BUILDING_TYPES = {
   // 'trains' marca los únicos edificios donde se pueden reclutar guarniciones.
   mine:      { name:'Mina de Regolito',   icon:'⛏', resource:'regolith', cost:{regolith:15,helium3:0,ice:0},  produce:{regolith:3,helium3:0,ice:0}, defense:0, allowed:['mare','highlands','crater'] },
   extractor: { name:'Extractor de He-3',  icon:'☢', resource:'helium3',  cost:{regolith:20,helium3:5,ice:0},  produce:{regolith:0,helium3:3,ice:0}, defense:0, allowed:['highlands','crater'] },
-  melter:    { name:'Fusor de Hielo',     icon:'❄', resource:'ice',    cost:{regolith:15,helium3:0,ice:0},  produce:{regolith:0,helium3:0,ice:3}, defense:0, allowed:['ice'] },
+  melter:    { name:'Fusor de Hielo',     icon:'❄', resource:'ice',    cost:{regolith:15,helium3:0,ice:0},  produce:{regolith:0,helium3:0,ice:1}, defense:0, allowed:['ice'] },
   barracks:  { name:'Cuartel Lunar',      icon:'▣', trains:true,         cost:{regolith:20,helium3:10,ice:5}, produce:{regolith:0,helium3:0,ice:0}, defense:1, allowed:TODO_TERRENO },
   turret:    { name:'Torreta Defensiva',  icon:'▲', cost:{regolith:25,helium3:10,ice:0}, produce:{regolith:0,helium3:0,ice:0}, defense:3, allowed:TODO_TERRENO },
   lab:       { name:'Laboratorio',        icon:'◆', cost:{regolith:20,helium3:10,ice:0}, produce:{regolith:0,helium3:1,ice:0}, defense:0, allowed:TODO_TERRENO },

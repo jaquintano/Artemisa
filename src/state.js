@@ -62,7 +62,8 @@ export function sectorLabel(h){
   const row = h.r + RADIUS + 1;
   return `Sector ${col}${row}`;
 }
-export function popCap(faction){ return 8 + faction.resources.ice*2; }
+/* popCap() vive en economy.js: depende de la producción de hielo, que se calcula
+   allí, y traerla aquí crearía un ciclo de imports entre estado y economía. */
 export function totalUnits(faction){
   let n=0; for(const h of state.hexes.values()) if(h.owner===faction.id) n+=h.units;
   return n;

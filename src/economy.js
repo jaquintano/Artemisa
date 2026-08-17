@@ -1,6 +1,6 @@
 /* Economía: producción por turno, construcción, entrenamiento e investigación. */
 import { TERRAIN, BUILDING_TYPES, TECHS, TRAIN_COST } from './config.js';
-import { state, sectorLabel, log, popCap, totalUnits } from './state.js';
+import { state, sectorLabel, log, totalUnits, territoryCount } from './state.js';
 import { requestRender } from './render/bus.js';
 
 /* Producción que entrará en el próximo cierre de turno, sin aplicarla.
@@ -24,6 +24,19 @@ export function projectedIncome(faction){
     }
   }
   return gain;
+}
+
+/* Tope de población: 4 de base, más la producción de hielo por turno, más un
+   punto por cada sector controlado.
+ *
+ * Depende del *flujo* de hielo, no del montón acumulado: acaparar ya no sirve de
+ * nada, hay que sostener la producción. Y como cada sector suma, expandirse es lo
+ * que financia el ejército con el que sigues expandiéndote — esa es la tensión
+ * que persigue la regla. Perder terreno o quedarte sin casquetes encoge el tope
+ * de golpe, y una facción puede quedar por encima de él: eso solo impide reclutar,
+ * nunca destruye tropas ya existentes. */
+export function popCap(faction){
+  return 4 + projectedIncome(faction).ice + territoryCount(faction);
 }
 
 export function produceResources(){

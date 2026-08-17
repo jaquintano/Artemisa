@@ -1,8 +1,8 @@
 /* Paneles laterales, registro de misión, leyenda y selección de sectores. */
 import { TERRAIN, BUILDING_TYPES, TECHS, MAX_TURNS, TRAIN_COST } from '../config.js';
-import { state, sectorLabel, neighborsOf, availableUnits, popCap, totalUnits, territoryCount } from '../state.js';
+import { state, sectorLabel, neighborsOf, availableUnits, totalUnits, territoryCount } from '../state.js';
 import { fmtNum, attackPowerDetail, defensePowerDetail, describeAttack, describeDefense } from '../combat.js';
-import { buildBuilding, trainUnit, research, canAfford, canTrainAt, projectedIncome } from '../economy.js';
+import { buildBuilding, trainUnit, research, canAfford, canTrainAt, projectedIncome, popCap } from '../economy.js';
 import { confirmMove } from '../game.js';
 import { renderMap } from './map.js';
 import { resourceIconInline } from './resource-icons.js';
@@ -124,7 +124,7 @@ export function renderHexPanel(){
         <div class="bo-name"><span>⬡ Entrenar unidad</span><span class="bo-cost">${costLabel(TRAIN_COST)}</span></div>
         <button class="btn" id="trainbtn" ${canTrain?'':'disabled'}>ENTRENAR</button>
       </div>
-      ${topeLleno?`<div class="empty-hint">Tope de población alcanzado (${popCap(player)}). Consigue más hielo para ampliarlo.</div>`:''}`;
+      ${topeLleno?`<div class="empty-hint">Tope de población alcanzado (${popCap(player)}). Se amplía conquistando sectores y aumentando tu producción de hielo por turno.</div>`:''}`;
     } else {
       out += `<div class="empty-hint" style="margin-top:10px;">Aquí no se pueden reclutar tropas: solo se entrena en la <b>Base Principal</b> y en los <b>Cuarteles Lunares</b>.</div>`;
     }

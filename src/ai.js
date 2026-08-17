@@ -1,8 +1,8 @@
 /* Turnos de la IA rival: expansión, construcción, reclutamiento e investigación. */
 import { BUILDING_TYPES, TECHS, TRAIN_COST } from './config.js';
-import { state, neighborsOf, availableUnits, popCap, totalUnits, log } from './state.js';
+import { state, neighborsOf, availableUnits, totalUnits, log } from './state.js';
 import { attackPower, defensePower, resolveCombat } from './combat.js';
-import { canBuild, canTrainAt, canAfford, payCost } from './economy.js';
+import { canBuild, canTrainAt, canAfford, payCost, popCap } from './economy.js';
 
 /* La IA no gasta hasta el último recurso: exige un colchón sobre el coste para no
    quedarse sin margen de reacción justo después de construir. */

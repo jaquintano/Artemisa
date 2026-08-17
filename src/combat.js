@@ -37,7 +37,9 @@ export function attackPowerDetail(faction, units, source, target){
 }
 export function defensePowerDetail(faction, hex, source){
   let p = hex.units;
-  const armor = !!(faction && faction.techs.has('armor'));
+  // El blindaje lo llevan puesto las tropas: un sector vacío no se beneficia de él
+  // por mucho que su facción tenga la tecnología investigada.
+  const armor = !!(faction && faction.techs.has('armor') && hex.units > 0);
   if(armor) p += 1;
   const terrainBonus = TERRAIN[hex.terrain].defense;
   p += terrainBonus;
