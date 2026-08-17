@@ -145,89 +145,78 @@ introduce una dependencia del DOM en la capa de lógica, deja de ejecutarse.
   apareciendo en el registro de misión y en la vista previa. No sustituyas el
   modelo determinista por tiradas aleatorias sin pedirlo explícitamente.
 
-## Incidencia abierta: la partida no se resuelve
+## Balance: histórico de una investigación larga
 
-Medido con `node tests/balance-sim.mjs 200`: **el 100 % de las partidas agotan el
-límite de rondas** sin que nadie alcance el 60 % de dominancia.
+Estado actual, medido con `node tests/balance-sim.mjs 200`: **el 85,5 % de las
+partidas se resuelven por dominancia**, en 64,3 rondas de media sobre 80, con el
+líder controlando el 59 % del mapa. La incidencia que arrastraba este documento
+—*el 100 % de las partidas agotaban el límite de rondas*— está **cerrada**.
 
-Diagnóstico ya realizado (no hace falta repetirlo):
+### Qué la causaba
 
-- **No es el apoyo.** Probado con `SUPPORT_FACTOR` a 0 / 0.25 / 0.5 / 1: ninguna
-  partida se resuelve en ningún caso. Más apoyo incluso *acelera* la expansión,
-  porque favorece a quien ya tiene frente formado.
-**RESUELTA la causa principal.** Era que la IA dispersaba las tropas de una en una
-y nunca las concentraba. Medido en su día: el 72,4 % de sus sectores con frontera
-no tenían tropas que enviar (guarnecían 1 unidad y `aiTakeTurn()` envía
-`availableUnits-1`), el 58,8 % de todos los sectores tenían exactamente 1 unidad,
-y a los frentes bloqueados les faltaban solo **0,6 puntos de fuerza**: no les
-faltaba ejército, les faltaba juntarlo.
+**La IA dispersaba las tropas de una en una y nunca las concentraba.** Medido en
+su momento: el 72,4 % de sus sectores con frontera no tenían tropas que enviar
+(guarnecían 1 unidad y `aiTakeTurn()` envía `availableUnits-1`), el 58,8 % de
+todos los sectores tenían exactamente 1 unidad, y a los frentes bloqueados les
+faltaban solo **0,6 puntos de fuerza**. No les faltaba ejército: les faltaba
+juntarlo.
 
-El arreglo es `concentrarTropas()` en `ai.js`: los sectores que no lindan con nadie
-hostil son inalcanzables ese turno, así que vuelcan su guarnición hacia el frente
-por el camino más corto. Efecto medido, 200 partidas:
+Se arregló con `concentrarTropas()` en `ai.js` y subiendo `MAX_TURNS` de 60 a 80:
 
-| | antes | después |
-|---|---|---|
-| partidas resueltas | 0 % | **41,5 %** |
-| territorio del líder | 14,2 % | **51,3 %** |
+| | antes | con concentración | y con 80 rondas |
+|---|---|---|---|
+| partidas resueltas | 0 % | 40 % | **85,5 %** |
+| territorio del líder | 14,2 % | 52,2 % | **59,0 %** |
 
-**Lo que queda**: las partidas piden unas 65 rondas para decidirse y `MAX_TURNS`
-las corta en 60. Barrido con la concentración activa: 70 rondas → 70,5 %
-resueltas; 80 → 84 %; 90 → 89,5 %; 100 → 96 %. Subir `MAX_TURNS` a 80 es el
-cambio de una línea que más resolución compra; queda a decisión del mantenedor
-porque alarga la partida.
+### Callejones sin salida (no repitas estas pruebas)
 
-Descartado con mediciones (no repitas estas pruebas):
+Todo esto se midió y **no era la causa**. Dos de ellos llegaron a estar
+recomendados en versiones anteriores de este mismo documento:
 
-- **No es el apoyo.** `SUPPORT_FACTOR` a 0 / 0.25 / 0.5 / 1: ninguna partida se
-  resuelve en ningún caso.
-- **No son los recursos.** El líder acaba con ~750 de regolito sin gastar.
-- **No es el tope de población.** Barrido de la base de `popCap()` de 4 a 30 con
-  200 partidas cada uno: las resueltas siguen en 0 % y el líder solo pasa de 8,5
-  a 10,8 sectores. Con la base a 30 las facciones ni siquiera llenan el tope
-  (presión 83 %), lo que prueba que no es el techo lo que las frena.
-- **No es la cadencia de reclutamiento.** Con la IA reclutando 1 unidad por cada
-  punto de recluta en vez de 1 por turno: 8,7 sectores frente a 8,5. Nada.
-  *(Ambas eran las líneas recomendadas en versiones anteriores de este documento;
-  se midieron y no se sostienen.)*
+- **El apoyo.** `SUPPORT_FACTOR` a 0 / 0.25 / 0.5 / 1: ninguna partida se resolvía
+  en ningún caso.
+- **Los recursos.** El líder terminaba con ~750 de regolito sin gastar.
+- **El tope de población.** Barrido de la base de `popCap()` de 4 a 30, 200
+  partidas por valor: las resueltas seguían en 0 % y el líder solo pasaba de 8,5 a
+  10,8 sectores. Con la base en 30 las facciones ni siquiera llenaban el tope
+  (presión 83 %), lo que demostraba que no era el techo lo que las frenaba.
+- **La cadencia de reclutamiento.** Con la IA reclutando 1 unidad por cada punto
+  de recluta en vez de 1 por turno: 8,7 sectores frente a 8,5.
+- **Encoger el mapa.** Ayuda en proporción pero no resuelve: entre `RADIUS` 7, 5 y
+  4 el líder se quedó clavado en 9-11 sectores absolutos, y lo que subía era el
+  porcentaje porque bajaba el denominador.
 
-Medidas sucesivas del territorio medio del líder al final (misma simulación):
+La lección: **la presión del tope al 98 % era un espejismo.** El ejército estaba
+pegado al techo porque no llegaba a gastarse en combate, no porque faltara techo.
+Un indicador saturado no prueba que ese indicador sea el cuello de botella.
 
-| Configuración                                    | Mapa | Líder final |
-|--------------------------------------------------|------|-------------|
-| `RADIUS=7`, reclutamiento libre                   | 169  | 17,3 % (~29 sect.) |
-| `RADIUS=5`, reclutamiento libre                   |  91  | 26,4 % (~24 sect.) |
-| `RADIUS=5` + reclutamiento solo en base/cuartel   |  91  |  7,7 % (~7 sect.) |
-| …y la IA priorizando cuarteles (`ai.js`)          |  91  | 12,5 % (~11 sect.) |
-| …y tope de población ligado a la expansión        |  91  | 10,7 % (~10 sect.) |
-| …y 5 guarniciones iniciales en vez de 6           |  91  |  9,6 % (~9 sect.) |
-| `RADIUS=4` (mapa actual)                          |  61  | 14,2 % (~9 sect.) |
+### Barrido del tope de población, ya con la concentración activa
 
-Lecturas: encoger el mapa ayuda en proporción pero **no basta** para resolver
-partidas — en sectores absolutos el líder lleva clavado en 9-11 desde hace varios
-cambios, y lo que sube es el porcentaje porque el denominador baja. Limitar el
-reclutamiento a base y cuarteles costó la mitad del territorio (26,4 → 12,5 %),
-precio esperado de la regla; el hundimiento hasta 7,7 % fue en cambio un fallo,
-un umbral mal calculado que dejaba a la IA con un único punto de recluta.
-
-Barrido de la base de `popCap()` **con la concentración ya activa** (200 partidas
-por valor, mapa de 61 sectores):
-
-| base | resueltas | líder | presión del tope |
+| base de `popCap()` | resueltas | líder | presión del tope |
 |------|-----------|-------|------------------|
-|  4   | 42,5 %    | 52,2 %| 57 % |
-|  6   | 36,5 %    | 52,7 %| 42 % |
-|  8   | 39,0 %    | 52,9 %| 38 % |
-| 10   | 42,5 %    | 54,2 %| 35 % |
-| 12   | 32,0 %    | 52,4 %| 33 % |
-| 16   | 38,5 %    | 52,4 %| 30 % |
+|  **4** (actual) | 42,5 % | 52,2 % | **57 %** |
+|  6   | 36,5 % | 52,7 % | 42 % |
+|  8   | 39,0 % | 52,9 % | 38 % |
+| 10   | 42,5 % | 54,2 % | 35 % |
+| 12   | 32,0 % | 52,4 % | 33 % |
+| 16   | 38,5 % | 52,4 % | 30 % |
 
-Ningún valor mejora la resolución: las diferencias son ruido a 200 partidas. Lo
-que sí cambia es la presión, que se desploma al subir la base. **Se deja en 4**
-porque es la que conserva la tensión que la regla persigue; subirla solo vuelve el
-tope decorativo. Ojo: antes de la concentración esa presión era del 98 % y el tope
-parecía el culpable — lo parecía porque el ejército no llegaba a usarse, no porque
-faltara techo.
+Ningún valor mejora la resolución —las diferencias son ruido a 200 partidas— y
+subir la base solo desploma la presión. **Se deja en 4**, que es la que conserva
+la tensión que la regla persigue; subirla devuelve el tope al papel decorativo.
+
+### Barrido de `MAX_TURNS`, con la concentración activa
+
+| rondas | resueltas | ronda media |
+|--------|-----------|-------------|
+| 60 | 40,0 % | 57,3 |
+| 70 | 70,5 % | 62,0 |
+| **80** (actual) | **84-85 %** | 64,3 |
+| 90 | 89,5 % | 65,5 |
+| 100 | 96,0 % | 66,2 |
+
+Las partidas piden unas 65 rondas para decidirse, así que 60 las cortaba justo
+antes del desenlace. A partir de 90 la curva se aplana y solo alarga la partida.
 
 **Conviene medir cada cambio con la simulación** en vez de ajustar a ojo.
 

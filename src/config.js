@@ -4,7 +4,9 @@
 // el total es 3·R²+3·R+1, así que R=4 son 5 de lado y 61 sectores.
 export const RADIUS = 4;
 export const HEX_SIZE = 30;
-export const MAX_TURNS = 60;
+// 80 y no 60: medido que las partidas piden ~65 rondas para decidirse, así que el
+// límite anterior las cortaba justo antes de resolverse (40 % resueltas -> 84 %).
+export const MAX_TURNS = 80;
 export const DOMINANCE_RATIO = 0.6;    // % de mapa para victoria por dominancia
 
 // elevación en px de cada terreno para la extrusión isométrica (negativo = depresión)

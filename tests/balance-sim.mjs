@@ -71,10 +71,10 @@ console.log(`Territorio medio del líder final   : ${avgLeader}%`);
 
 if (decisive / games < 0.5) {
   console.log('\n⚠  Más de la mitad de las partidas agotan el límite de rondas.');
-  console.log('   La causa histórica (la IA dispersaba las tropas de una en una) está');
-  console.log('   resuelta: concentrarTropas() en ai.js. Lo que queda es que las partidas');
-  console.log('   piden unas 65 rondas para decidirse y MAX_TURNS las corta en 60.');
-  console.log('   Medido: a 70 rondas se resuelve el 70 %, a 80 el 84 %, a 100 el 96 %.');
+  console.log('   Esto es una REGRESIÓN: con la configuración actual deberían resolverse');
+  console.log('   ~85 %. Lo primero que hay que mirar es concentrarTropas() en ai.js, que');
+  console.log('   es lo que evita que el ejército se disperse de una en una, y luego');
+  console.log('   MAX_TURNS (las partidas piden ~65 rondas para decidirse).');
   console.log('   Descartados con datos: SUPPORT_FACTOR, los recursos, el tope de');
   console.log('   población y la cadencia de reclutamiento. Ver CLAUDE.md.');
 } else {
