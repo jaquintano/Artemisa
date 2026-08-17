@@ -1,4 +1,5 @@
-/* Turnos de la IA rival: expansión, construcción, reclutamiento e investigación. */
+/* Turnos de la IA rival, en cinco fases: ataque, concentración de tropas,
+   construcción, reclutamiento e investigación. */
 import { BUILDING_TYPES, TECHS, TRAIN_COST } from './config.js';
 import { state, neighborsOf, availableUnits, totalUnits, log } from './state.js';
 import { attackPower, defensePower, resolveCombat } from './combat.js';

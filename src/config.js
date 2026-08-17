@@ -9,7 +9,10 @@ export const HEX_SIZE = 30;
 export const MAX_TURNS = 80;
 export const DOMINANCE_RATIO = 0.6;    // % de mapa para victoria por dominancia
 
-// elevación en px de cada terreno para la extrusión isométrica (negativo = depresión)
+// Elevación en px de cada terreno para la extrusión isométrica (negativo = depresión).
+// Hoy está todo a 0, así que el mapa se ve plano y map.js nunca llega a dibujar los
+// laterales (`.hexskirt`). Se conserva como palanca: dar altura a un terreno aquí
+// basta para que aparezcan.
 export const ELEVATION = { mare:0, highlands:0, crater:0, ice:0 };
 
 export const TERRAIN = {

@@ -48,8 +48,8 @@ src/
   config.js         constantes de dominio y parámetros de balance
   state.js          estado de partida y consultas sobre la rejilla hexagonal
   combat.js         apoyo entre sectores, fuerzas de ataque/defensa, resolución
-  economy.js        producción, construcción, reclutamiento, investigación
-  ai.js             turno de las facciones rivales
+  economy.js        producción, tope de población, construcción, reclutamiento
+  ai.js             turno de las rivales: ataque, concentración, construcción…
   victory.js        eliminación y condiciones de victoria
   game.js           órdenes de movimiento, cierre de turno, arranque
   main.js           único módulo que cablea lógica y presentación
@@ -64,6 +64,8 @@ src/
 tests/
   check-imports.mjs verificación estática del grafo de módulos
   balance-sim.mjs   simulación IA vs IA sin navegador
+tools/
+  serve.mjs         servidor estático de desarrollo (`npm start`), sin dependencias
 ```
 
 ### Regla de dependencias
@@ -82,10 +84,10 @@ sustituir la partida entera hay que llamar a `setState()`.
 ## Cómo ejecutarlo
 
 Los ES modules no funcionan con `file://` por la política CORS. Hace falta un
-servidor estático:
+servidor estático; el del repo solo usa módulos internos de Node:
 
 ```bash
-python3 -m http.server 8000     # y abrir http://localhost:8000
+npm start     # node tools/serve.mjs 8000, y abrir http://localhost:8000
 ```
 
 ## Comprobaciones antes de dar por buena una tarea
@@ -95,7 +97,7 @@ node tests/check-imports.mjs     # no debe haber referencias rotas
 node tests/balance-sim.mjs 200   # la lógica debe correr sin DOM
 ```
 
-La simulación de balance es además el **contrato de la regla 5**: si alguien
+La simulación de balance es además el **contrato de la regla 6**: si alguien
 introduce una dependencia del DOM en la capa de lógica, deja de ejecutarse.
 
 ## Reglas de juego (invariantes a preservar)

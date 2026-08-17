@@ -4,7 +4,7 @@
   "description": "Simulador de estrategia por turnos ambientado en la Luna. JavaScript puro, sin dependencias.",
   "type": "module",
   "scripts": {
-    "start": "python3 -m http.server 8000",
+    "start": "node tools/serve.mjs 8000",
     "check": "node tests/check-imports.mjs",
     "sim": "node tests/balance-sim.mjs 200",
     "test": "node tests/check-imports.mjs && node tests/balance-sim.mjs 50"

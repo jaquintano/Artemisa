@@ -1,4 +1,5 @@
-/* Economía: producción por turno, construcción, entrenamiento e investigación. */
+/* Economía: producción por turno, tope de población, construcción, entrenamiento
+   e investigación. */
 import { TERRAIN, BUILDING_TYPES, TECHS, TRAIN_COST } from './config.js';
 import { state, sectorLabel, log, totalUnits, territoryCount } from './state.js';
 import { requestRender } from './render/bus.js';

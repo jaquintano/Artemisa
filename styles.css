@@ -91,7 +91,6 @@
   .hex-supdef .hexface{stroke:var(--danger)!important;stroke-width:3;stroke-dasharray:3 2;}
   .hexspent{font-size:10px;fill:var(--text-dim);pointer-events:none;
     paint-order:stroke;stroke:#000;stroke-width:2px;stroke-opacity:.6;}
-  .hexlabel{font-size:9px;fill:rgba(255,255,255,.55);font-family:monospace;pointer-events:none;}
   .hexunits{font-size:12px;font-weight:700;fill:#fff;pointer-events:none;
     paint-order:stroke;stroke:#000;stroke-width:2px;stroke-opacity:.5;}
   .hexicon{font-size:13px;fill:#fff;pointer-events:none;text-anchor:middle;

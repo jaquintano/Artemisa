@@ -1,8 +1,9 @@
 /* Relieve de las baldosas de terreno, en vectorial.
  *
- * Sustituye al pixel art de pixelart.js. La diferencia de fondo no es solo el
- * estilo: aquel se regeneraba a distinta resolución con cada nivel de zoom, y
- * esto se describe una vez y lo rasteriza el navegador, nítido a cualquier escala.
+ * Sustituye al pixel art que el terreno tuvo hasta que se pasó todo a vectorial
+ * (aquel módulo ya no existe). La diferencia de fondo no era solo de estilo: se
+ * regeneraba a distinta resolución con cada nivel de zoom, mientras que esto se
+ * describe una vez y lo rasteriza el navegador, nítido a cualquier escala.
  *
  * Clave del diseño: aquí NO hay colores propios. Todo el dibujo son blancos y
  * negros semitransparentes, así que el tono lo pone siempre el relleno que haya

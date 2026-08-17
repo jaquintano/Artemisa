@@ -40,6 +40,10 @@
         <b>DÓNDE SE RECLUTA</b><br>
         Las guarniciones <b>solo</b> se entrenan en la <b>Base Principal</b> y en los <b>Cuarteles Lunares</b> (▣, 20 regolito / 10 helio-3 / 5 hielo, +1 de defensa). El Cuartel puede levantarse en cualquier sector propio que no tenga ya otra instalación, así que decidir dónde plantarlo es lo que fija tu frente: sin un cuartel cerca, las tropas tienen que caminar desde la base a razón de <b>un sector por ronda</b>. Si pierdes todos tus puntos de recluta, dejas de poder reponer bajas.
         <hr style="border:none;border-top:1px solid var(--line);margin:8px 0;">
+        <b>TOPE DE POBLACIÓN</b><br>
+        No puedes tener más guarniciones que <b>4 + tu producción de hielo por turno + tus sectores</b>. Cuenta el hielo que <i>entra cada ronda</i>, no el que tengas acumulado: acaparar no sirve de nada. Cada sector conquistado sube el tope en 1, y un Casquete de Hielo lo sube en 3 (la casilla más sus 2 de producción), así que son el objetivo más rentable del mapa.<br><br>
+        Expandirse es lo que financia el ejército con el que sigues expandiéndote. Y al revés: si pierdes terreno, el tope encoge y puede quedar por debajo de tus tropas. Cuando pasa, el contador de la cabecera se pone <span style="color:var(--danger)">rojo</span> — no pierdes unidades, pero no podrás reclutar hasta recuperar sitio.
+        <hr style="border:none;border-top:1px solid var(--line);margin:8px 0;">
         <b>MOVIMIENTO: 1 CASILLA POR TURNO</b><br>
         Cada guarnición solo puede desplazarse <b>un sector por ronda</b>. Las tropas que se mueven o asaltan quedan marcadas con <b>⊘</b> y no pueden encadenar un segundo movimiento hasta la ronda siguiente. El panel indica cuántas unidades siguen <i>disponibles</i> en el sector seleccionado.
         <hr style="border:none;border-top:1px solid var(--line);margin:8px 0;">
@@ -56,11 +60,12 @@
         &nbsp;&nbsp;+ fuerza de los sectores de apoyo<br>
         &nbsp;&nbsp;×1.25 si tienes <i>Relé Orbital</i><br><br>
         <b>Fuerza de defensa</b> = unidades en el sector<br>
-        &nbsp;&nbsp;+1 si el defensor tiene <i>Blindaje Reforzado</i><br>
+        &nbsp;&nbsp;+1 si el defensor tiene <i>Blindaje Reforzado</i> <b>y hay tropas en el sector</b><br>
         &nbsp;&nbsp;+1 en Tierras Altas o Cráter (bonus de terreno)<br>
-        &nbsp;&nbsp;+ bonus de instalación: Torreta +3, Base +5<br>
+        &nbsp;&nbsp;+ bonus de instalación: Cuartel Lunar +1, Torreta +3, Base +5<br>
         &nbsp;&nbsp;+1 si el sector es neutral (guarnición automática)<br>
         &nbsp;&nbsp;+ fuerza de los sectores de apoyo<br><br>
+        El blindaje lo llevan puestas las tropas: un sector <b>vacío</b> no se beneficia de él aunque lo tengas investigado. Una instalación sin guarnición cae con muy poco.<br><br>
         Si ganas el ataque, capturas el sector y sobreviven <b>(enviadas − defensoras)</b> unidades, mínimo 1. Si pierdes, tus tropas enviadas se destruyen y al defensor le quedan <b>(defensoras − enviadas)</b> unidades. Por eso enviar solo 1-2 unidades contra un sector con torreta o en Cráter/Tierras Altas suele fallar: revisa siempre la defensa del sector en el panel antes de atacar.
       </div>
       <div id="zoomcontrols">
