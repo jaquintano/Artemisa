@@ -155,19 +155,35 @@ Diagnóstico ya realizado (no hace falta repetirlo):
 - **No es el apoyo.** Probado con `SUPPORT_FACTOR` a 0 / 0.25 / 0.5 / 1: ninguna
   partida se resuelve en ningún caso. Más apoyo incluso *acelera* la expansión,
   porque favorece a quien ya tiene frente formado.
-- **No son los recursos.** En la ronda 60 el líder acumula ~750 de regolito sin
-  gastar: le sobra con qué pagar, no tiene dónde meterlo.
-- **Sí es el tope de población**, desde que pasó a `4 + producción de hielo +
-  sectores`. Las facciones terminan al **~96 %** del tope (18,0 tropas para 18,8),
-  así que el ejército solo crece si crece el territorio y el territorio solo crece
-  si crece el ejército: un equilibrio que se autolimita.
-- **El ritmo de reclutamiento ya no es el freno principal.** `aiTakeTurn()`
-  entrena como mucho una unidad por turno, y durante mucho tiempo ese fue el
-  sospechoso; pero con el tope actual apenas queda margen bajo él, así que subir
-  la cadencia sin tocar el tope no cambiaría gran cosa. **Este punto se revisó:
-  el diagnóstico anterior, que descartaba el tope y culpaba al reclutamiento, era
-  correcto con la fórmula vieja (`8 + 2·hielo acopiado`) y dejó de serlo con la
-  nueva.**
+**Causa real, medida: la IA dispersa las tropas de una en una y nunca las
+concentra.** Foto de la ronda 60 sobre 30 partidas, 434 sectores propios con
+frontera:
+
+- **72,4 %** no tienen tropas que enviar: `aiTakeTurn()` deja siempre 1 unidad de
+  guarnición y envía `availableUnits-1`, así que un sector con 1 unidad envía 0.
+- **58,8 % de todos los sectores tienen exactamente 1 unidad.** Tras conquistar,
+  los supervivientes son `max(1, enviadas - defensoras)`, que casi siempre es 1, y
+  ese sector queda inmovilizado para siempre.
+- **0 %** podrían atacar y ganar. Pero a los que lo intentarían solo les faltan
+  **0,6 puntos de fuerza** de media: no necesitan un ejército mayor, necesitan
+  juntar el que ya tienen.
+
+La IA no mueve tropas entre sectores propios: solo ataca desde donde están. El
+ejército se fragmenta en unidades sueltas incapaces de nada.
+
+Descartado con mediciones (no repitas estas pruebas):
+
+- **No es el apoyo.** `SUPPORT_FACTOR` a 0 / 0.25 / 0.5 / 1: ninguna partida se
+  resuelve en ningún caso.
+- **No son los recursos.** El líder acaba con ~750 de regolito sin gastar.
+- **No es el tope de población.** Barrido de la base de `popCap()` de 4 a 30 con
+  200 partidas cada uno: las resueltas siguen en 0 % y el líder solo pasa de 8,5
+  a 10,8 sectores. Con la base a 30 las facciones ni siquiera llenan el tope
+  (presión 83 %), lo que prueba que no es el techo lo que las frena.
+- **No es la cadencia de reclutamiento.** Con la IA reclutando 1 unidad por cada
+  punto de recluta en vez de 1 por turno: 8,7 sectores frente a 8,5. Nada.
+  *(Ambas eran las líneas recomendadas en versiones anteriores de este documento;
+  se midieron y no se sostienen.)*
 
 Medidas sucesivas del territorio medio del líder al final (misma simulación):
 
@@ -188,10 +204,26 @@ reclutamiento a base y cuarteles costó la mitad del territorio (26,4 → 12,5 %
 precio esperado de la regla; el hundimiento hasta 7,7 % fue en cambio un fallo,
 un umbral mal calculado que dejaba a la IA con un único punto de recluta.
 
-Líneas de ataque razonables, a decidir por el mantenedor: subir la base del tope
-(el `4` de `popCap()`), permitir a la IA reclutar en proporción a sus puntos de
-recluta, subir `MAX_TURNS`, o bajar `DOMINANCE_RATIO`. **Conviene medir cada
-cambio con la simulación** en vez de ajustar a ojo.
+Línea de ataque que sí ataca la causa, a decidir por el mantenedor: **dar a la IA
+una fase de concentración** antes de atacar — mover guarniciones de sectores
+interiores (los que no lindan con nadie hostil) hacia el frente, para formar pilas
+capaces de romper. Con un déficit medio de 0,6 puntos, juntar dos guarniciones de
+1 unidad ya desbloquea la mayoría de los frentes. Ojo con el invariante de
+movimiento: 1 sector por ronda y `movedUnits` marca a quien ya se movió.
+
+Barrido de la base de `popCap()` (200 partidas cada valor, mapa de 61 sectores):
+
+| base | resueltas | líder | sectores | presión del tope |
+|------|-----------|-------|----------|------------------|
+|  4   | 0 %       | 14,0 %|  8,5     | 98 % |
+|  8   | 0 %       | 16,5 %| 10,0     | 96 % |
+| 12   | 0 %       | 17,3 %| 10,6     | 95 % |
+| 20   | 0 %       | 17,7 %| 10,8     | 91 % |
+| 30   | 0 %       | 17,6 %| 10,7     | 83 % |
+
+Ninguno resuelve partidas. A partir de 12 la mejora se agota y el tope empieza a
+dejar de apretar, que es justo la tensión que la regla persigue. **Conviene medir
+cada cambio con la simulación** en vez de ajustar a ojo.
 
 ## Estilo de código
 
