@@ -32,6 +32,21 @@ const RESERVED = new Set([
   'finally', 'throw', 'switch', 'case', 'yield', 'async', 'await', 'static', 'get', 'set',
 ]);
 
+/* Parte una lista de declaradores por las comas de nivel superior, ignorando las
+   que estén dentro de paréntesis, corchetes o llaves. */
+function dividirDeclaradores(texto) {
+  let depth = 0, current = '';
+  const parts = [];
+  for (const ch of texto) {
+    if ('([{'.includes(ch)) depth++;
+    else if (')]}'.includes(ch)) depth--;
+    if (ch === ',' && depth === 0) { parts.push(current); current = ''; }
+    else current += ch;
+  }
+  parts.push(current);
+  return parts;
+}
+
 /* Exportaciones declaradas por cada módulo. */
 function exportsOf(src) {
   const names = new Set();
@@ -41,16 +56,7 @@ function exportsOf(src) {
   // `export const A = 1, B = 2, C = 3;` exporta las tres: hay que recorrer
   // todos los declaradores de la sentencia, no solo el primero.
   for (const m of src.matchAll(/export\s+(?:const|let|var)\s+([^;]+);/g)) {
-    let depth = 0, current = '';
-    const parts = [];
-    for (const ch of m[1]) {
-      if ('([{'.includes(ch)) depth++;
-      else if (')]}'.includes(ch)) depth--;
-      if (ch === ',' && depth === 0) { parts.push(current); current = ''; }
-      else current += ch;
-    }
-    parts.push(current);
-    for (const part of parts) {
+    for (const part of dividirDeclaradores(m[1])) {
       const id = part.trim().match(/^([A-Za-z_$][\w$]*)/);
       if (id) names.add(id[1]);
     }
@@ -82,6 +88,14 @@ function localsOf(src) {
     /for\s*\(\s*(?:const|let|var)\s+([A-Za-z_$][\w$]*)/g,
     /catch\s*\(\s*([A-Za-z_$][\w$]*)/g,
   ];
+  // `const A = 1, B = 2;` declara las dos: los patrones de arriba solo ven la
+  // primera, y las siguientes se tomaban por referencias sin definir.
+  for (const m of src.matchAll(/(?:^|\s)(?:export\s+)?(?:const|let|var)\s+([^;]+);/g)) {
+    for (const parte of dividirDeclaradores(m[1])) {
+      const id = parte.trim().match(/^([A-Za-z_$][\w$]*)/);
+      if (id) names.add(id[1]);
+    }
+  }
   for (const re of patterns) {
     for (const m of src.matchAll(re)) {
       for (const part of m[1].split(',')) {
@@ -96,6 +110,14 @@ function localsOf(src) {
 const files = walk(join(ROOT, 'src'));
 const exportMap = new Map();
 for (const f of files) exportMap.set(f, exportsOf(readFileSync(f, 'utf8')));
+
+/* Todos los nombres que algún módulo exporta. El barrido de constantes se limita
+   a este conjunto: así una constante real sin importar salta, pero un rótulo de
+   interfaz en mayúsculas («ACCIONES», «CONSTRUIR») no, porque nadie lo exporta.
+   Hace falta porque el borrado de plantillas no soporta plantillas anidadas y
+   deja texto de la interfaz suelto en el cuerpo analizado. */
+const TODAS_LAS_EXPORTACIONES = new Set();
+for (const nombres of exportMap.values()) for (const n of nombres) TODAS_LAS_EXPORTACIONES.add(n);
 
 let problems = 0;
 
@@ -142,6 +164,26 @@ for (const file of files) {
     seen.add(name);
     if (!locals.has(name) && !imported.has(name)) {
       console.log(`✗ ${rel}: llama a '${name}()' sin importarlo ni definirlo`);
+      problems++;
+    }
+  }
+
+  /* Segundo barrido: constantes en MAYÚSCULAS.
+   *
+   * El de arriba solo mira identificadores seguidos de '(', o sea llamadas a
+   * función. Una constante mal importada —`DIRS[d][0]`, sin paréntesis— se colaba
+   * entera hasta reventar en ejecución; pasó de verdad y por eso está esto aquí.
+   * Se limita a MAYÚSCULAS porque es la convención del proyecto para las
+   * constantes de config.js, y así no hay que distinguir variables locales de
+   * referencias rotas. El cuerpo ya viene sin cadenas ni plantillas, de modo que
+   * los rótulos de la interfaz («ACCIONES», «RONDA») no cuentan como código. */
+  for (const m of body.matchAll(/\b([A-Z][A-Z0-9_]{2,})\b/g)) {
+    const name = m[1];
+    if (seen.has(name) || RESERVED.has(name) || GLOBALS.has(name)) continue;
+    if (!TODAS_LAS_EXPORTACIONES.has(name)) continue;   // no es una constante del proyecto
+    seen.add(name);
+    if (!locals.has(name) && !imported.has(name)) {
+      console.log(`✗ ${rel}: usa la constante '${name}' sin importarla ni definirla`);
       problems++;
     }
   }

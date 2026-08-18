@@ -44,7 +44,8 @@ function conmutador(idBoton, idPanel, visibleAlEmpezar){
   return aplicar;
 }
 
-const mostrarHowto = conmutador('howtotoggle', 'howto', true);
+// el tutorial arranca plegado: estorba el mapa y siempre está a un clic del botón
+const mostrarHowto = conmutador('howtotoggle', 'howto', false);
 conmutador('logtoggle', 'logpopup', false);
 // la ✕ del propio tutorial tiene que dejar el botón de la cabecera coherente
 document.getElementById('howtoclose').addEventListener('click', () => mostrarHowto(false));

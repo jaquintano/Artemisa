@@ -4,7 +4,7 @@
    no puede leer package.json sin una petición extra, así que la versión vive aquí
    y `node tools/version.mjs` la copia a package.json. No la edites a mano en dos
    sitios; usa el script y quedarán siempre iguales. */
-export const APP_VERSION = '1.0.2';
+export const APP_VERSION = '1.0.3';
 
 // Radio del mapa hexagonal. El lado del hexágono grande mide RADIUS+1 sectores y
 // el total es 3·R²+3·R+1, así que R=4 son 5 de lado y 61 sectores.
@@ -72,3 +72,14 @@ export const FACTION_DEFS = [
 /* Proporción de la guarnición vecina que se aporta como apoyo (1 = fuerza completa).
    Bajarlo a 0.5 hace las líneas de frente menos decisivas. */
 export const SUPPORT_FACTOR = 1;
+
+/* Puntuación para la victoria técnica: la que decide la partida cuando se agotan
+   las rondas sin que nadie alcance la dominancia. El territorio es la base, pero
+   no lo único, para que una facción pequeña y bien atrincherada pueda competir
+   con otra que solo acumule casillas vacías. */
+export const SCORE = {
+  sector:   3,    // por cada sector controlado
+  edificio: 5,    // por cada instalación en pie
+  baja:     2,    // por cada unidad rival destruida
+  relay:   15,    // bonus único por investigar el Relé Orbital
+};

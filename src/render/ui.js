@@ -4,8 +4,10 @@ import { state, sectorLabel, neighborsOf, availableUnits, totalUnits, territoryC
 import { fmtNum, attackPowerDetail, defensePowerDetail, describeAttack, describeDefense } from '../combat.js';
 import { buildBuilding, trainUnit, research, canAfford, canTrainAt, projectedIncome, popCap } from '../economy.js';
 import { confirmMove } from '../game.js';
+import { scoreDetail } from '../victory.js';
 import { renderMap } from './map.js';
 import { resourceIconInline } from './resource-icons.js';
+import { unitIconInline } from './unit-icon.js';
 
 export function onHexClick(hex){
   if(state.gameOver) return;
@@ -65,8 +67,9 @@ const RESBAR_ICON = 22;
 function contadorPoblacion(faction){
   const tropas = totalUnits(faction), tope = popCap(faction);
   const excedido = tropas > tope;
+  // el icono es la misma ficha que representa a las tropas en el mapa
   return `<div class="res pop${excedido ? ' excedido' : ''}"
-    title="${excedido ? 'Superas el tope: no puedes reclutar hasta ampliarlo o perder unidades' : 'Guarniciones / tope de población'}">👥 ${tropas}/${tope}</div>`;
+    title="${excedido ? 'Superas el tope: no puedes reclutar hasta ampliarlo o perder unidades' : 'Guarniciones / tope de población'}">${unitIconInline(faction.id, RESBAR_ICON)} ${tropas}/${tope}</div>`;
 }
 
 export function renderResbar(){
@@ -85,13 +88,28 @@ export function renderResbar(){
   renderStats();
 }
 
-/* Grupo «Est. Juego»: ronda en curso y territorio de cada facción. */
+/* Grupo «Est. Juego»: ronda en curso y puntuación de cada facción, la que decide
+   la victoria técnica si se agotan las rondas. El desglose va en un menú flotante
+   que se abre al pasar el ratón, para no llenar la cabecera de cifras. */
 export function renderStats(){
   document.getElementById('statbody').innerHTML =
     `<span class="ronda">RONDA ${state.turn} / ${MAX_TURNS}</span>` +
-    state.factions.map(f =>
-      `<span class="fterr ${f.alive?'':'fdead'}" title="${f.name}">
-        <span class="fdot" style="background:${f.color}"></span>${territoryCount(f)}</span>`).join('');
+    state.factions.map(f => {
+      const d = scoreDetail(f);
+      return `<span class="fpts ${f.alive?'':'fdead'}" tabindex="0">
+        <span class="fdot" style="background:${f.color}"></span>${d.total}
+        <span class="pts-menu">
+          <span class="pts-menu-tit" style="color:${f.color}">${f.name}</span>
+          ${filaPuntos('Sectores controlados', d.conteo.sectores, d.sectores)}
+          ${filaPuntos('Infraestructura activa', d.conteo.edificios, d.edificios)}
+          ${filaPuntos('Bajas rivales confirmadas', d.conteo.bajas, d.bajas)}
+          ${filaPuntos('Relé Orbital', d.conteo.relay ? 'sí' : 'no', d.relay)}
+          <span class="pts-fila pts-total"><span>TOTAL</span><b>${d.total}</b></span>
+        </span></span>`;
+    }).join('');
+}
+function filaPuntos(etiqueta, conteo, puntos){
+  return `<span class="pts-fila"><span>${etiqueta} <i>(${conteo})</i></span><b>${puntos}</b></span>`;
 }
 
 export function renderHexPanel(){
@@ -132,14 +150,18 @@ export function renderHexPanel(){
       </div>
       <div id="combatpreview" style="margin-top:8px;font-size:11px;"></div>`;
   } else if(isMine){
-    out += `<p class="panel-title" style="margin-top:12px;">ACCIONES</p>`;
+    out += `<p class="panel-title subtitulo" style="margin-top:12px;">ACCIONES</p>`;
     if(!h.building){
       out += `<div class="build-list">`;
       for(const [key,b] of Object.entries(BUILDING_TYPES)){
         if(key==='base' || !b.allowed.includes(h.terrain)) continue;
         const afford = canAfford(player, b.cost);
         out += `<div class="build-opt">
-          <div class="bo-name"><span>${b.resource?resIcon(b.resource,12):b.icon} ${b.name}</span><span class="bo-cost">${costLabel(b.cost)}</span></div>
+          <div class="bo-name">
+            <span class="bo-tit">${b.resource?resIcon(b.resource,12):b.icon} ${b.name}</span>
+            <span class="bo-cost">Recursos necesarios: ${costLabel(b.cost)}</span>
+            <span class="bo-vent">${ventajaEdificio(b)}</span>
+          </div>
           <button class="btn" data-build="${key}" ${afford?'':'disabled'}>CONSTRUIR</button>
         </div>`;
       }
@@ -151,7 +173,11 @@ export function renderHexPanel(){
       const topeLleno = totalUnits(player) >= popCap(player);
       const canTrain = canAfford(player, TRAIN_COST) && !topeLleno;
       out += `<div class="build-opt" style="margin-top:10px;">
-        <div class="bo-name"><span>⬡ Entrenar unidad</span><span class="bo-cost">${costLabel(TRAIN_COST)}</span></div>
+        <div class="bo-name">
+          <span class="bo-tit">⬡ Entrenar unidad</span>
+          <span class="bo-cost">Recursos necesarios: ${costLabel(TRAIN_COST)}</span>
+          <span class="bo-vent">+1 guarnición en este sector</span>
+        </div>
         <button class="btn" id="trainbtn" ${canTrain?'':'disabled'}>ENTRENAR</button>
       </div>
       ${topeLleno?`<div class="empty-hint">Tope de población alcanzado (${popCap(player)}). Se amplía conquistando sectores y aumentando tu producción de hielo por turno.</div>`:''}`;
@@ -208,10 +234,15 @@ export function renderTechs(){
   document.getElementById('techlist').innerHTML = TECHS.map(t=>{
     const done = player.techs.has(t.id);
     const afford = player.resources.helium3 >= t.cost;
-    return `<div class="tech-item ${done?'done':''}">
-      <div class="tech-head"><span>${t.name}</span><span>${done?'✓ COMPLETO':t.cost+' '+resIcon('helium3',12)}</span></div>
-      <div class="tech-desc">${t.desc}</div>
-      ${done?'':`<button class="btn" data-tech="${t.id}" ${afford?'':'disabled'} style="width:100%;">INVESTIGAR</button>`}
+    // misma estructura que las opciones de construcción: título, coste, ventaja y
+    // el botón a la derecha, para que el panel se lea igual en las dos secciones
+    return `<div class="tech-item build-opt ${done?'done':''}">
+      <div class="bo-name">
+        <span class="bo-tit">${t.name}</span>
+        <span class="bo-cost">${done?'✓ COMPLETO':`Recursos necesarios: ${t.cost} ${resIcon('helium3',11)}`}</span>
+        <span class="bo-vent">${t.desc}</span>
+      </div>
+      ${done?'':`<button class="btn" data-tech="${t.id}" ${afford?'':'disabled'}>INVESTIGAR</button>`}
     </div>`;
   }).join('');
   document.querySelectorAll('[data-tech]').forEach(btn=>{

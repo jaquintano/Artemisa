@@ -1,7 +1,33 @@
 /* Condiciones de victoria y eliminación. La presentación se delega en el bus de render. */
-import { DOMINANCE_RATIO, MAX_TURNS } from './config.js';
+import { DOMINANCE_RATIO, MAX_TURNS, SCORE } from './config.js';
 import { state, territoryCount, log } from './state.js';
 import { showGameOver } from './render/bus.js';
+
+/* Puntuación desglosada de una facción. Devuelve tanto los puntos por concepto
+   como los conteos en bruto, porque el desglose de la cabecera necesita enseñar
+   las dos cosas («12 sectores → 36 pts»). */
+export function scoreDetail(faction){
+  let sectores = 0, edificios = 0;
+  for(const h of state.hexes.values()){
+    if(h.owner !== faction.id) continue;
+    sectores++;
+    if(h.building) edificios++;
+  }
+  const bajas = faction.kills || 0;
+  const relay = faction.techs.has('relay');
+  const pts = {
+    sectores:  sectores  * SCORE.sector,
+    edificios: edificios * SCORE.edificio,
+    bajas:     bajas     * SCORE.baja,
+    relay:     relay ? SCORE.relay : 0,
+  };
+  return {
+    ...pts,
+    total: pts.sectores + pts.edificios + pts.bajas + pts.relay,
+    conteo: { sectores, edificios, bajas, relay },
+  };
+}
+export function score(faction){ return scoreDetail(faction).total; }
 
 export function checkEliminations(){
   for(const faction of state.factions){
@@ -32,11 +58,12 @@ export function checkVictory(){
     return;
   }
   if(state.turn >= MAX_TURNS){
-    const ranked = [...state.factions].sort((a,b)=>territoryCount(b)-territoryCount(a));
+    // victoria técnica: decide la puntuación, no el territorio a secas
+    const ranked = [...state.factions].sort((a,b)=>score(b)-score(a));
     if(ranked[0].id===0){
-      endGame('VICTORIA POR PUNTOS', `Se alcanzó el límite de ${MAX_TURNS} rondas. Terminas con el mayor control territorial (${territoryCount(player)} sectores).`);
+      endGame('VICTORIA TÉCNICA', `Se alcanzó el límite de ${MAX_TURNS} rondas. Ganas por puntuación con ${score(player)} puntos frente a los ${score(ranked[1])} de ${ranked[1].name}.`);
     } else {
-      endGame('DERROTA POR PUNTOS', `Se alcanzó el límite de ${MAX_TURNS} rondas. ${ranked[0].name} controla más territorio que tú.`);
+      endGame('DERROTA TÉCNICA', `Se alcanzó el límite de ${MAX_TURNS} rondas. ${ranked[0].name} gana por puntuación: ${score(ranked[0])} puntos frente a tus ${score(player)}.`);
     }
   }
 }

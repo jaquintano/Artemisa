@@ -161,6 +161,19 @@ introduce una dependencia del DOM en la capa de lógica, deja de ejecutarse.
 - **Combate**: gana quien tenga más fuerza; el desglose completo debe seguir
   apareciendo en el registro de misión y en la vista previa. No sustituyas el
   modelo determinista por tiradas aleatorias sin pedirlo explícitamente.
+- **Victoria técnica por puntos**: si se agotan las rondas decide `score()` de
+  `victory.js`, no el territorio a secas. Puntúan sectores, instalaciones en pie,
+  bajas rivales confirmadas (`faction.kills`, que lleva `resolveCombat`) y haber
+  investigado el Relé Orbital; los pesos están en `SCORE` de `config.js`. Las
+  guarniciones neutrales **no** cuentan como bajas: no pertenecen a ninguna
+  facción.
+- **La propiedad del terreno se marca con el perímetro, no con el relleno.** Cada
+  loseta conserva el color de su terreno y `map.js` traza en el color de la
+  facción los lados que dan a alguien distinto. La unión de esos lados es
+  exactamente el contorno del territorio contiguo, así que no hace falta calcular
+  componentes conexas: un sector aislado dibuja sus seis lados y uno interior,
+  ninguno. Los bordes se acumulan aparte y se pintan al final, por encima de todos
+  los hexágonos; dentro de cada `<g>` los taparía el vecino dibujado después.
 
 ## Balance: histórico de una investigación larga
 

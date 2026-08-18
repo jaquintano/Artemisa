@@ -1,5 +1,5 @@
 /* Renderizado del mapa hexagonal y control de zoom/scroll. */
-import { HEX_SIZE, ELEVATION, TERRAIN, BUILDING_TYPES, ZOOM_MIN, ZOOM_MAX, ZOOM_STEP } from '../config.js';
+import { HEX_SIZE, ELEVATION, TERRAIN, BUILDING_TYPES, ZOOM_MIN, ZOOM_MAX, ZOOM_STEP, DIRS } from '../config.js';
 import { state, sectorLabel, availableUnits, getHex } from '../state.js';
 import { supportersFor } from '../combat.js';
 import { axialToPixel, shade, pt } from './svg-utils.js';
@@ -77,12 +77,18 @@ export function renderMap(){
   const inList = (list,h) => list.some(s=>s.q===h.q && s.r===h.r);
 
   let html = TERRAIN_TILE_DEFS + RESOURCE_ICON_DEFS + UNIT_ICON_DEFS;
+  // los bordes se acumulan aparte y se pintan al final, por encima de todos los
+  // hexágonos: si fueran dentro de cada <g>, el vecino dibujado después los taparía
+  let bordes = '';
   for(const [h,pos] of ordered){
     const {x,y,elev} = pos;
     const topY = y - elev;
     const faction = h.owner!=null ? state.factions[h.owner] : null;
-    const baseColor = faction ? faction.color : TERRAIN[h.terrain].color;
-    const topFill = faction ? shade(baseColor, 0.10) : shade(baseColor, 0.05);
+    // La propiedad ya NO se pinta como relleno: el sector conserva siempre el color
+    // de su terreno y el dueño se marca rodeando su territorio (ver bordes más
+    // abajo). Así no se pierde de vista qué hay debajo de cada casilla conquistada.
+    const baseColor = TERRAIN[h.terrain].color;
+    const topFill = shade(baseColor, faction ? 0.10 : 0.05);
     const leftFill = shade(baseColor, -0.30);
     const rightFill = shade(baseColor, -0.14);
 
@@ -107,7 +113,26 @@ export function renderMap(){
       html += `<polygon class="hexskirt" points="${pt(corners[2])} ${pt(corners[3])} ${pt(baseCorners[3])} ${pt(baseCorners[2])}" fill="${rightFill}"></polygon>`;
     }
 
-    html += `<polygon class="hexface" points="${corners.map(pt).join(' ')}" fill="${topFill}" stroke="${faction?'rgba(0,0,0,.35)':'rgba(255,255,255,.18)'}"></polygon>`;
+    html += `<polygon class="hexface" points="${corners.map(pt).join(' ')}" fill="${topFill}" stroke="rgba(255,255,255,.18)"></polygon>`;
+
+    /* Frontera del territorio. Basta con dibujar los lados que dan a alguien que no
+       es de la misma facción: la unión de esos lados es exactamente el perímetro
+       del grupo contiguo, sin necesidad de calcular componentes conexas. Un sector
+       aislado dibuja sus seis lados; uno interior, ninguno.
+       DIRS y las esquinas no van en el mismo orden, de ahí la tabla de conversión:
+       la esquina i mira a 60·i−30 grados y la dirección d a los ángulos
+       0/300/240/180/120/60. */
+    if(faction){
+      const LADO_DE_DIR = [0,5,4,3,2,1];
+      for(let d=0; d<6; d++){
+        const n = getHex(h.q+DIRS[d][0], h.r+DIRS[d][1]);
+        if(n && n.owner===h.owner) continue;   // lado interior: no es frontera
+        const i = LADO_DE_DIR[d];
+        bordes += `<line x1="${corners[i][0].toFixed(1)}" y1="${corners[i][1].toFixed(1)}"
+          x2="${corners[(i+1)%6][0].toFixed(1)}" y2="${corners[(i+1)%6][1].toFixed(1)}"
+          stroke="${faction.color}" class="hexborder"></line>`;
+      }
+    }
 
     html += terrainTileUse(h.terrain, x, topY);
 
@@ -130,7 +155,7 @@ export function renderMap(){
     html += `<title>${sectorLabel(h)} — ${TERRAIN[h.terrain].name}${faction?(' — '+faction.name):''}${availTxt}</title>`;
     html += `</g>`;
   }
-  svg.innerHTML = html;
+  svg.innerHTML = html + bordes;
 
   svg.querySelectorAll('.hex').forEach(g=>{
     g.addEventListener('click', ()=>{

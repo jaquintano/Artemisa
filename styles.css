@@ -51,7 +51,23 @@
     color:var(--text-dim);white-space:nowrap;}
   .group-body{display:flex;align-items:center;gap:14px;font-size:18px;}
   .group-body .ronda{color:var(--amber);white-space:nowrap;}
-  .group-body .fterr{display:flex;align-items:center;gap:6px;white-space:nowrap;}
+  /* Puntuación por facción, con el desglose técnico en un menú flotante. Se abre
+     al pasar el ratón y también al enfocar con el teclado (de ahí el tabindex). */
+  .group-body .fpts{display:flex;align-items:center;gap:6px;white-space:nowrap;
+    position:relative;cursor:help;outline:none;}
+  .pts-menu{display:none;position:absolute;top:calc(100% + 8px);left:-10px;z-index:60;
+    min-width:250px;flex-direction:column;gap:3px;background:var(--bg-panel);
+    border:1px solid var(--line);border-radius:5px;padding:10px 12px;font-size:12px;
+    box-shadow:0 4px 16px rgba(0,0,0,.65);cursor:default;}
+  .fpts:hover .pts-menu,.fpts:focus .pts-menu,.fpts:focus-within .pts-menu{display:flex;}
+  .pts-menu-tit{font-family:var(--font-title);font-size:11px;letter-spacing:1px;
+    margin-bottom:4px;}
+  .pts-fila{display:flex;justify-content:space-between;gap:16px;color:var(--text-dim);}
+  .pts-fila i{font-style:normal;opacity:.65;}
+  .pts-fila b{color:var(--text-main);font-weight:600;}
+  .pts-total{border-top:1px solid var(--line);margin-top:4px;padding-top:5px;
+    color:var(--amber);}
+  .pts-total b{color:var(--amber);}
   /* Barra de recursos: letras e iconos un 50% por encima del resto de la interfaz
      (12px -> 18px, iconos 15px -> 22px), por ser el indicador que más se consulta. */
   .resbar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;}
@@ -74,6 +90,10 @@
     padding:6px 12px;border-radius:3px;font-size:11px;letter-spacing:1px;}
   .btn:hover:not(:disabled){border-color:var(--amber);color:var(--amber);}
   .btn:disabled{opacity:.35;cursor:not-allowed;}
+  /* Los tres botones de la cabecera a la misma altura: el de fin de turno la fija
+     con su padding, así que los otros la igualan en vez de quedar más bajos. */
+  #howtotoggle,#restartbtn,.btn-end{min-height:34px;display:inline-flex;
+    align-items:center;justify-content:center;}
   .btn-end{background:var(--amber);color:#1A1300;border:none;font-weight:700;padding:9px 18px;}
   .btn-end:hover{filter:brightness(1.1);}
   .btn-danger{border-color:var(--danger);color:var(--danger);}
@@ -109,14 +129,23 @@
     paint-order:stroke;stroke:#000;stroke-width:2px;stroke-opacity:.5;}
   .hexicon{font-size:13px;fill:#fff;pointer-events:none;text-anchor:middle;
     paint-order:stroke;stroke:#000;stroke-width:2px;stroke-opacity:.55;}
+  /* Frontera de territorio: gruesa para verse de un vistazo, pero sin invadir la
+     loseta, que debe seguir mostrando su terreno. El linecap redondo cierra las
+     esquinas entre lados contiguos sin dejar muescas. */
+  .hexborder{stroke-width:4;stroke-linecap:round;pointer-events:none;}
 
   /* Las secciones crecen a su altura natural y es el panel entero el que hace
      scroll, y solo si la ventana no da para las dos: así «Investigación
      tecnológica» se despliega completa siempre que quepa. */
   #sidepanel{width:340px;min-width:340px;background:var(--bg-panel);border-left:1px solid var(--line);
     display:flex;flex-direction:column;overflow-y:auto;}
-  #sidepanel::-webkit-scrollbar{width:8px;}
-  #sidepanel::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
+  /* barra en ámbar: sobre el panel oscuro, el gris de antes pasaba desapercibido */
+  #sidepanel{scrollbar-width:thin;scrollbar-color:var(--amber) var(--bg-panel);}
+  #sidepanel::-webkit-scrollbar{width:10px;}
+  #sidepanel::-webkit-scrollbar-track{background:var(--bg-panel);}
+  #sidepanel::-webkit-scrollbar-thumb{background:var(--amber);border-radius:5px;
+    border:2px solid var(--bg-panel);}
+  #sidepanel::-webkit-scrollbar-thumb:hover{background:#FFD97A;}
   .panel-section{border-bottom:1px solid var(--line);padding:14px 16px;flex-shrink:0;}
   .panel-title{font-size:13px;letter-spacing:2px;color:var(--amber);margin:0 0 10px 0;
     font-family:var(--font-title);font-weight:700;}
@@ -125,10 +154,19 @@
   .stat-row{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;color:var(--text-dim);}
   .stat-row b{color:var(--text-main);font-weight:600;}
   .build-list{display:flex;flex-direction:column;gap:6px;margin-top:8px;}
-  .build-opt{display:flex;justify-content:space-between;align-items:center;background:var(--bg-panel-2);
-    border:1px solid var(--line);border-radius:3px;padding:7px 10px;font-size:11px;}
-  .build-opt .bo-name{display:flex;flex-direction:column;}
+  /* Construcción e investigación comparten ficha: título, coste y ventaja en
+     columna a la izquierda, y el botón a la derecha centrado verticalmente. */
+  .build-opt{display:flex;justify-content:space-between;align-items:center;gap:10px;
+    background:var(--bg-panel-2);border:1px solid var(--line);border-radius:3px;
+    padding:8px 10px;font-size:11px;}
+  .build-opt .bo-name{display:flex;flex-direction:column;gap:2px;min-width:0;}
+  .build-opt .bo-tit{font-weight:600;color:var(--text-main);font-size:12px;}
   .build-opt .bo-cost{color:var(--text-dim);font-size:10px;}
+  .build-opt .bo-vent{color:var(--ok);font-size:10px;}
+  .build-opt .btn{flex-shrink:0;align-self:center;}
+  /* «ACCIONES» es un rótulo interno del panel, no un título de sección: va en el
+     color de texto normal para no competir con los títulos en ámbar. */
+  .panel-title.subtitulo{color:var(--text-main);}
   .empty-hint{font-size:11px;color:var(--text-dim);font-style:italic;padding:6px 0;}
   .action-row{display:flex;gap:6px;margin-top:8px;}
   .numinput{width:56px;background:var(--bg-panel-2);border:1px solid var(--line);color:var(--text-main);

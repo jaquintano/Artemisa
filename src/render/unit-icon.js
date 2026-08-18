@@ -94,3 +94,13 @@ export function unitTokenUse(ownerId, cx, cy, size){
   const i = (ownerId == null) ? NEUTRAL_IDX : ownerId;
   return `<use href="#unit-${i}" transform="translate(${(cx-s/2).toFixed(2)},${(cy-s/2).toFixed(2)}) scale(${(s/GRID).toFixed(4)})"></use>`;
 }
+
+/* Versión suelta para la interfaz HTML: la misma ficha que se ve en el mapa, para
+   que el contador de población no use un icono distinto del que representa a las
+   tropas. Se autocontiene, sin depender de los <defs> del mapa. */
+const MARKUP_SUELTO = PALETA.map(c => bustoMarkup(c));
+export function unitIconInline(ownerId, px){
+  const s = px || 22;
+  const i = (ownerId == null) ? NEUTRAL_IDX : ownerId;
+  return `<svg class="ricon" width="${s}" height="${s}" viewBox="0 0 ${GRID} ${GRID}" aria-hidden="true">${MARKUP_SUELTO[i]}</svg>`;
+}

@@ -90,6 +90,9 @@ export function resolveCombat(source, target, sent){
   if(atkD.total > defD.total){
     const survivors = Math.max(1, Math.round(sent - target.units));
     const prevOwnerName = defFaction ? defFaction.name : 'territorio neutral';
+    // solo cuentan las bajas de una facción rival: las guarniciones neutrales no
+    // pertenecen a nadie, así que aniquilarlas no puntúa
+    if(defFaction) atkFaction.kills += target.units;
     target.owner = atkFaction.id;
     target.units = survivors;
     // las tropas que acaban de asaltar ya han gastado su movimiento de este turno
@@ -100,6 +103,7 @@ export function resolveCombat(source, target, sent){
     checkEliminations();
   } else {
     const survivors = Math.max(0, Math.round(target.units - sent));
+    if(defFaction) defFaction.kills += sent;   // el asalto fallido se pierde entero
     target.units = survivors;
     target.movedUnits = Math.min(target.movedUnits||0, survivors);
     log(`<b>${atkFaction.name}</b> falla el asalto sobre ${sectorLabel(target)}. `

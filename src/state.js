@@ -22,6 +22,7 @@ export function newState(){
     id:f.id, name:f.name, color:f.color, dim:f.dim, isPlayer:f.isPlayer, alive:true,
     resources:{ regolith:60, helium3:25, ice:20 },
     techs:new Set(),
+    kills:0,   // unidades rivales destruidas; puntúa para la victoria técnica
   }));
 
   const corners = [
