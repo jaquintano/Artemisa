@@ -106,6 +106,25 @@ function mejorObjetivo(faction, source){
 
 /* ---------- Fase 2: evaluación de tropas y reclutamiento ---------- */
 
+/* Orden estricto de investigación de la Fase 5. Vive aquí arriba porque la Fase 2
+   también lo consulta: necesita saber cuánto helio-3 debe dejar sin gastar. */
+const ORDEN_TECH = ['hopper','armor','relay','fusion1','fusion2'];
+
+/* Suelo de helio-3 que el reclutamiento NO puede tocar.
+ *
+ * Reclutar cuesta también helio-3, así que sin este suelo la Fase 2 se lo gastaba
+ * entero en infantería: medido, la IA terminaba el 100 % de las partidas sin
+ * Laboratorio, sin una sola tecnología y sin un solo Transportador — la Fase 5
+ * era código muerto. El diseño reparte las monedas: hielo y regolito para tropas,
+ * helio-3 para ciencia.
+ *
+ * Es el coste del Laboratorio y no el de la siguiente tecnología a propósito.
+ * Medido con la simulación: reservar más no aumenta la ciencia (lo que la limita
+ * es el ingreso de helio-3, no el suelo) y sí encoge la expansión — apartar 45
+ * para el Relé Orbital deja al líder en el 17 % del mapa frente al 25 % con este
+ * suelo, con la misma proporción de facciones que llegan a investigar. */
+const RESERVA_CIENCIA = BUILDING_TYPES.lab.cost.helium3;
+
 function faseReclutamiento(faction, reserva, dist){
   // Si ya hay algún asalto con victoria garantizada, no fuerza reclutamiento:
   // ese ejército del frente ya supera a la loseta rival más débil.
@@ -127,7 +146,10 @@ function faseReclutamiento(faction, reserva, dist){
     .sort((a,b)=> (dist.get(a)??99) - (dist.get(b)??99));
   if(!cuarteles.length) return;
   const destino = cuarteles[0];
-  while(totalUnits(faction) < popCap(faction) && puedoGastar(faction, TRAIN_COST, reserva)){
+  // al mantenimiento se suma el helio-3 apartado para la ciencia: las tropas salen
+  // del hielo y el regolito, no de lo que financia el Laboratorio
+  const conCiencia = { ...reserva, helium3:(reserva.helium3||0) + RESERVA_CIENCIA };
+  while(totalUnits(faction) < popCap(faction) && puedoGastar(faction, TRAIN_COST, conCiencia)){
     payCost(faction, TRAIN_COST);
     destino.units += 1;
   }
@@ -242,8 +264,7 @@ function faseTecnologia(faction, reserva){
   // algún Cráter (donde el Extractor rinde más).
   const controlaCrater = [...state.hexes.values()]
     .some(h => h.owner===faction.id && h.terrain==='crater');
-  const orden = ['hopper','armor','relay','fusion1','fusion2'];
-  for(const id of orden){
+  for(const id of ORDEN_TECH){
     if((id==='fusion1'||id==='fusion2') && !controlaCrater) continue;
     const tech = TECHS.find(t=>t.id===id);
     if(!puedeInvestigar(faction, tech)) continue;

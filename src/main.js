@@ -53,23 +53,32 @@ fetch('package.json?cb=' + Date.now(), { cache: 'no-store' })
   })
   .catch(() => {});   // sin conexión o servido desde file://: no es motivo de fallo
 
-/* Dos paneles con el mismo patrón de interruptor: el botón refleja su estado en
-   aria-pressed, que es de lo que tira el CSS para resaltarlo en ámbar. */
-function conmutador(idBoton, idPanel, visibleAlEmpezar){
+/* Paneles con el mismo patrón de interruptor: el botón refleja su estado en
+   aria-pressed, que es de lo que tira el CSS para resaltarlo en ámbar.
+   `alAbrir` se invoca solo al desplegar, nunca al plegar ni en el arranque: es
+   lo que permite que dos paneles rivales se excluyan sin llamarse en bucle. */
+function conmutador(idBoton, idPanel, visibleAlEmpezar, alAbrir){
   const boton = document.getElementById(idBoton);
   const panel = document.getElementById(idPanel);
   const aplicar = visible => {
     panel.hidden = !visible;
     boton.setAttribute('aria-pressed', String(visible));
   };
-  boton.addEventListener('click', () => aplicar(panel.hidden));
+  boton.addEventListener('click', () => {
+    const abrir = panel.hidden;
+    if(abrir && alAbrir) alAbrir();
+    aplicar(abrir);
+  });
   aplicar(visibleAlEmpezar);
   return aplicar;
 }
 
 // el tutorial arranca plegado: estorba el mapa y siempre está a un clic del botón
 const mostrarHowto = conmutador('howtotoggle', 'howto', false);
-conmutador('logtoggle', 'logpopup', false);
+/* Registro e investigación comparten la misma esquina superior derecha, así que se
+   excluyen entre sí: abrir uno pliega el otro en vez de solaparse. */
+const mostrarLog = conmutador('logtoggle', 'logpopup', false, () => mostrarTech(false));
+const mostrarTech = conmutador('techtoggle', 'techpopup', false, () => mostrarLog(false));
 // la ✕ del propio tutorial tiene que dejar el botón de la cabecera coherente
 document.getElementById('howtoclose').addEventListener('click', () => mostrarHowto(false));
 document.getElementById('zoomin').addEventListener('click', () => setZoom(mapZoom * ZOOM_STEP));

@@ -76,8 +76,20 @@
   .resbar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;}
   .res{display:flex;align-items:center;gap:8px;font-size:18px;background:var(--bg-panel-2);
     border:1px solid var(--line);border-radius:4px;padding:8px 15px;}
-  /* el incremento previsto acompaña sin competir con la cifra principal */
-  .res .res-inc{font-size:13px;opacity:.75;font-weight:400;}
+  /* el saldo previsto acompaña sin competir con la cifra principal; al pasar el
+     ratón (o al enfocarlo con el teclado) despliega su desglose técnico */
+  .res .res-inc{font-size:13px;opacity:.75;font-weight:400;position:relative;
+    cursor:help;outline:none;}
+  /* saldo negativo: el mantenimiento se está comiendo la producción */
+  .res .res-inc.negativo{color:var(--danger);opacity:1;font-weight:700;}
+  .inc-menu{display:none;position:absolute;top:calc(100% + 8px);left:-10px;z-index:60;
+    min-width:250px;flex-direction:column;gap:3px;background:var(--bg-panel);
+    border:1px solid var(--line);border-radius:5px;padding:10px 12px;font-size:12px;
+    color:var(--text-main);font-weight:400;
+    box-shadow:0 4px 16px rgba(0,0,0,.65);cursor:default;}
+  .res-inc:hover .inc-menu,.res-inc:focus .inc-menu,.res-inc:focus-within .inc-menu{display:flex;}
+  /* lo que consume el mantenimiento, en el rojo de peligro y ya con su signo menos */
+  .inc-menu .gasto{color:var(--danger);}
   .res.pop{color:var(--text-dim);}
   /* tropas por encima del tope: no se pierde nada, pero no se puede reclutar */
   .res.pop.excedido{color:var(--danger);border-color:var(--danger);font-weight:700;}
@@ -122,13 +134,22 @@
   .hex{cursor:pointer;transition:filter .12s;}
   .hex:hover .hexface, .hex:hover .hexskirt{filter:brightness(1.2);}
   .hexface{stroke-width:1.5;}
-  .hex-sel .hexface{stroke:var(--amber)!important;stroke-width:3;}
-  .hex-target .hexface{stroke:#fff!important;stroke-width:3;stroke-dasharray:4 2;}
-  .hex-supatk .hexface{stroke:var(--ok)!important;stroke-width:3;stroke-dasharray:3 2;}
-  .hex-supdef .hexface{stroke:var(--danger)!important;stroke-width:3;stroke-dasharray:3 2;}
-  .hexspent{font-size:10px;fill:var(--text-dim);pointer-events:none;
+  /* Realces (selección, objetivo, apoyos): van en una capa propia por encima de
+     los bordes de territorio, que son más gruesos y los tapaban. */
+  .hexhl{fill:none;pointer-events:none;stroke-width:3;}
+  .hexhl-sel{stroke:var(--amber);stroke-width:3.5;}
+  .hexhl-target{stroke:#fff;stroke-dasharray:4 2;}
+  .hexhl-supatk{stroke:var(--ok);stroke-dasharray:3 2;}
+  .hexhl-supdef{stroke:var(--danger);stroke-dasharray:3 2;}
+  /* Prohibido: centrado sobre la ficha de infantería, en rojo de peligro para que
+     se distinga del propio icono que cubre. */
+  .hexspent{font-size:10px;fill:var(--danger);pointer-events:none;
     paint-order:stroke;stroke:#000;stroke-width:2px;stroke-opacity:.6;}
   .hexunits{font-size:12px;font-weight:700;fill:#fff;pointer-events:none;
+    paint-order:stroke;stroke:#000;stroke-width:2px;stroke-opacity:.5;}
+  /* El Transportador comparte cuerpo y tipografía con el contador de guarniciones;
+     lo único que cambia es el color, que lo pone map.js con el de la facción. */
+  .hexhopper{font-size:12px;font-weight:700;pointer-events:none;
     paint-order:stroke;stroke:#000;stroke-width:2px;stroke-opacity:.5;}
   .hexicon{font-size:13px;fill:#fff;pointer-events:none;text-anchor:middle;
     paint-order:stroke;stroke:#000;stroke-width:2px;stroke-opacity:.55;}
@@ -179,25 +200,42 @@
   .numinput{width:56px;background:var(--bg-panel-2);border:1px solid var(--line);color:var(--text-main);
     border-radius:3px;padding:6px;font-family:monospace;text-align:center;}
 
-  #techlist{display:flex;flex-direction:column;gap:6px;}
+  #techlist{display:flex;flex-direction:column;gap:10px;}
   .tech-item{background:var(--bg-panel-2);border:1px solid var(--line);border-radius:3px;padding:8px 10px;}
   .tech-item.done{border-color:var(--ok);opacity:.65;}
   .tech-head{display:flex;justify-content:space-between;font-size:12px;font-weight:700;}
   .tech-desc{font-size:10px;color:var(--text-dim);margin:3px 0 6px;}
+  /* Grupos del árbol (militares / extracción): recuadro con rótulo, sin plegar —
+     las seis tecnologías se ven desde el primer turno. */
+  .tech-group{display:flex;flex-direction:column;gap:6px;border:1px solid var(--line);
+    border-radius:4px;padding:8px 9px 9px;}
+  .tech-group-tit{font-family:var(--font-title);font-size:11px;letter-spacing:1.5px;
+    color:var(--text-dim);margin:0 0 2px 0;text-transform:uppercase;}
+  /* nivel romano de una cadena (I -> II) dentro del mismo cuadro */
+  .tech-nivel{color:var(--amber);font-weight:700;letter-spacing:1px;}
 
-  /* Registro de misión: pop-up anclado a #mapstage, que no hace scroll, así que
-     se queda quieto en pantalla igual que los controles de zoom. */
-  #logtoggle{position:absolute;top:10px;right:26px;z-index:20;width:42px;height:42px;
+  /* Registro de misión e investigación: pop-ups anclados a #mapstage, que no hace
+     scroll, así que se quedan quietos en pantalla igual que los controles de zoom.
+     Los dos botones van juntos en la esquina superior derecha, con el microscopio
+     a la derecha del registro. */
+  #paneltoggles{position:absolute;top:10px;right:26px;z-index:20;display:flex;gap:8px;}
+  #paneltoggles button{width:42px;height:42px;
     font-size:20px;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;
     background:var(--bg-panel);border:1px solid var(--line);color:var(--text-main);
     border-radius:5px;box-shadow:0 2px 8px rgba(0,0,0,.5);}
-  #logtoggle:hover{border-color:var(--amber);}
-  #logtoggle[aria-pressed="true"]{border-color:var(--amber);color:var(--amber);}
-  #logpopup{position:absolute;top:60px;right:26px;z-index:20;width:340px;
+  #paneltoggles button:hover{border-color:var(--amber);}
+  #paneltoggles button[aria-pressed="true"]{border-color:var(--amber);color:var(--amber);}
+  /* Ambos ocupan el mismo hueco, pegados al panel de acciones: se excluyen entre sí
+     desde main.js, así que nunca se solapan. */
+  #logpopup,#techpopup{position:absolute;top:60px;right:26px;z-index:20;width:340px;
     max-height:calc(100% - 110px);display:flex;flex-direction:column;
     background:var(--bg-panel);border:1px solid var(--line);border-radius:5px;
     padding:12px 14px;box-shadow:0 2px 14px rgba(0,0,0,.6);}
-  #logpopup[hidden]{display:none;}
+  #logpopup[hidden],#techpopup[hidden]{display:none;}
+  /* la lista de tecnologías puede pasarse de alto: hace scroll dentro del pop-up */
+  #techpopup #techlist{overflow-y:auto;}
+  #techpopup #techlist::-webkit-scrollbar{width:6px;}
+  #techpopup #techlist::-webkit-scrollbar-thumb{background:var(--line);}
   #logpanel{overflow-y:auto;font-size:12px;display:flex;flex-direction:column-reverse;}
   #logpanel div{padding:3px 0;border-bottom:1px dotted var(--line);color:var(--text-dim);}
   #logpanel div b{color:var(--amber);}

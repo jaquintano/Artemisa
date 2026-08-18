@@ -54,7 +54,7 @@ src/
     resource-icons.js  iconos vectoriales de regolito, helio-3 y hielo
     unit-icon.js    ficha de guarnición, teñida con el color de cada facción
     map.js          render del mapa, zoom, scroll y fronteras de territorio
-    ui.js           paneles, registro de misión, leyenda
+    ui.js           panel de sector, árbol tecnológico, registro de misión, leyenda
 tests/
   check-imports.mjs verificación estática del grafo de módulos
   balance-sim.mjs   simulación IA vs IA sin navegador
@@ -165,43 +165,76 @@ node tests/mapgen-test.mjs 200   # reglas de generación sobre cientos de mapas
   combate: salta hasta 2 casillas con hasta 4 tropas. Una Torreta rival **activa**
   niega aterrizar y sobrevolar (`torretaEnemigaActiva`); el destino no admite
   torreta rival ni aunque esté apagada.
-- **Victoria técnica por puntos**: al agotarse las rondas decide `score()`, no el
+- **Victoria técnica por puntos**: al agotarse los turnos decide `score()`, no el
   territorio a secas. Puntúan sectores, instalaciones en pie, bajas rivales
   (`faction.kills`, que lleva `resolveCombat` — las neutrales no cuentan) y el Relé
-  Orbital. Pesos en `SCORE` de `config.js`.
+  Orbital. Pesos en `SCORE` de `config.js`: **2 / 1 / 1 / 3**, los de las reglas del
+  juego. Con `MAX_TURNS` en 40 esta es la vía por la que se decide casi toda
+  partida, así que tocar estos pesos cambia el juego entero.
+- **El saldo que anuncia la barra superior es neto**: producción menos
+  mantenimiento. `desgloseIngresos()` es la cuenta única (terreno, edificios y
+  mantenimiento por separado) y `projectedIncome()` suma sus dos partidas de
+  producción. **No metas el mantenimiento dentro de `projectedIncome`**: lo cobra
+  `pagarMantenimiento()` aparte y se cobraría dos veces.
 - **La propiedad se marca con el perímetro, no con el relleno.** Cada loseta
   conserva el color de su terreno; `map.js` traza en el color de la facción los
   lados que dan a alguien distinto. La unión de esos lados es el contorno del
   territorio contiguo (sin calcular componentes conexas). Los bordes se pintan al
-  final, por encima de todos los hexágonos, o el vecino los taparía.
+  final, por encima de todos los hexágonos, o el vecino los taparía. **Y encima de
+  ellos van los realces** (`.hexhl`: selección, objetivo y apoyos) en una tercera
+  capa: el borde de territorio es más grueso y escondía la loseta señalada.
+- **Colocación de unidades en la loseta** (`UNIDAD_CY`, `SEPARACION`, `NUM_BAJADA`
+  en `map.js`): el contador va centrado *bajo* la ficha, no al lado, para dejar el
+  hueco derecho al Transportador cuando comparten sector. Ese apilado obliga a
+  subir el grupo: el hexágono se estrecha deprisa hacia abajo y un contador de dos
+  cifras desplazado a un lado se salía por el lado inclinado. Si tocas estas
+  constantes, comprueba las cuatro combinaciones (solo tropas, solo hopper, ambos,
+  y con dos cifras).
 
 ## Balance
 
-Medido con `node tests/balance-sim.mjs 400`: **~62 % de las partidas se resuelven
-por conquista** antes de las 80 rondas, con el líder sobre el 57 % del mapa (el
-resto se decide por victoria técnica por puntos).
+`MAX_TURNS` es **40**, el límite que fijan las reglas del juego. Con una partida
+tan corta **casi ninguna se resuelve por dominancia**: al agotarse los turnos
+decide `score()`, y eso es el diseño, no una avería. El líder acaba sobre el 25 %
+del mapa. **No subas `MAX_TURNS` para "arreglar" el porcentaje de conquistas.**
+
+Por eso `tests/balance-sim.mjs` ya no mide «cuántas se resuelven por conquista»
+sino **si las tres IAs, que juegan con el mismo código, ganan por igual**. Un
+sesgo ahí sí es un fallo real (posición de salida u orden de turno), y el umbral
+está en 3σ de la binomial para que la tanda corta de `npm test` no dé falsas
+alarmas. Ojo: a 600 partidas el reparto **sí** sale sesgado hacia la facción 1
+(~41 % frente al 33 % esperado); está sin diagnosticar.
+
+La simulación **paga el mantenimiento** como hace `endTurn()`. Antes no lo hacía y
+regalaba el sostenimiento de todas las instalaciones, así que sus economías y sus
+expansiones eran más optimistas que las del juego real.
 
 `ai.js` ejecuta el turno en seis fases fijas (mantenimiento como reserva,
-reclutamiento, ataque quirúrgico, maniobra de apoyo, tecnología y expansión). La
-IA es deliberadamente más estratégica que la carrera por territorio del prototipo:
-recluta hasta el tope de población cuando no domina el frente, prioriza capturar
+reclutamiento, ataque quirúrgico, maniobra de apoyo, tecnología y expansión).
+Recluta hasta el tope de población cuando no domina el frente, prioriza capturar
 Parajes Helados y Cráteres (más He-3 y tope de población) y solo asalta con
-victoria matemática garantizada. Eso cambia el 75 % del rush anterior por un ~62 %
-más "de manual".
+victoria matemática garantizada.
 
-La palanca que de verdad mueve esto sigue siendo `concentrarTropas()`: sin ella la
-IA repartía las tropas de una en una y no rompía ningún frente (0 % resueltas).
-**Por eso corre cada turno**, no solo los turnos sin ataque: mueve tropas
-interiores (inalcanzables ese turno) al frente, así que no compite con la fase de
-ataque. Medido: gatearla tras "solo si no atacó" cae a ~53 %.
+La palanca que de verdad mueve el avance es `concentrarTropas()`: sin ella la IA
+reparte las tropas de una en una y no rompe ningún frente. **Por eso corre cada
+turno**, no solo los turnos sin ataque: mueve tropas interiores (inalcanzables ese
+turno) al frente, así que no compite con la fase de ataque.
+
+**El reclutamiento respeta un suelo de helio-3** (`RESERVA_CIENCIA`, el coste del
+Laboratorio). Reclutar también cuesta helio-3, y sin ese suelo la Fase 2 se lo
+gastaba entero: medido, el 100 % de las partidas terminaban sin Laboratorio, sin
+una sola tecnología y sin un Transportador — la fase de ciencia era código muerto.
+Reservar *más* no aumenta la ciencia (lo que la limita es el ingreso de helio-3) y
+sí encoge la expansión: apartar 45 para el Relé deja al líder en el 17 % del mapa
+frente al 25 % con el suelo actual.
 
 **Ya se midieron y descartaron** como causa del estancamiento el apoyo
 (`SUPPORT_FACTOR`), los recursos, el tope de población (barrido de 4 a 30 sin
-efecto) y la cadencia de reclutamiento; no repitas esas pruebas. Medido también:
-enviar toda la guarnición al asalto (sin dejar 1) baja a ~29 %, y perseguir la
-loseta más fácil en vez de la prioridad de terreno baja a ~55 %. `MAX_TURNS` está
-en 80 porque las partidas piden ~65 rondas para decidirse. **Mide cada cambio de
-balance con la simulación**, no a ojo.
+efecto) y la cadencia de reclutamiento; no repitas esas pruebas. Medido también
+(con el límite anterior de 80 turnos, como orden de magnitud): enviar toda la
+guarnición al asalto sin dejar 1 de guarnición empeora mucho el avance, y perseguir
+la loseta más fácil en vez de la prioridad de terreno también. **Mide cada cambio
+de balance con la simulación**, no a ojo.
 
 ## Estilo de código
 

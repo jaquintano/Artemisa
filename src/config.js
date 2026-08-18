@@ -4,7 +4,7 @@
    no puede leer package.json sin una petición extra, así que la versión vive aquí
    y `node tools/version.mjs` la copia a package.json. No la edites a mano en dos
    sitios; usa el script y quedarán siempre iguales. */
-export const APP_VERSION = '1.0.9';
+export const APP_VERSION = '1.0.10';
 
 /* Número de jugadores de la partida: 3 o 4. Determina el tamaño del tablero
    (3 -> lado 5, 61 losetas; 4 -> lado 6, 91 losetas) y cuántas facciones entran
@@ -13,9 +13,14 @@ export const APP_VERSION = '1.0.9';
 export const PLAYER_COUNT = 3;
 
 export const HEX_SIZE = 30;
-// 80 y no 60: medido que las partidas piden ~65 rondas para decidirse, así que el
-// límite anterior las cortaba justo antes de resolverse (40 % resueltas -> 84 %).
-export const MAX_TURNS = 80;
+/* Límite de turnos fijado por las reglas del juego.
+ *
+ * Ojo al tocarlo: con 80 la IA resolvía ~62 % de las partidas por conquista; con
+ * 40 la mayoría llegan al límite y las decide `score()` (victoria técnica). Eso es
+ * intencionado — la partida es corta y la puntuación es el desempate previsto, no
+ * un síntoma de que el mapa se haya congelado. Ver la nota de balance en CLAUDE.md
+ * antes de "arreglar" el porcentaje de dominancia subiendo este número. */
+export const MAX_TURNS = 40;
 export const DOMINANCE_RATIO = 0.6;    // % de mapa para victoria por dominancia
 
 // Elevación en px de cada terreno para la extrusión isométrica (negativo = depresión).
@@ -130,12 +135,36 @@ export const FACTION_DEFS = [
 export const SUPPORT_FACTOR = 1;
 
 /* Puntuación para la victoria técnica: la que decide la partida cuando se agotan
-   las rondas sin que nadie alcance la dominancia. El territorio es la base, pero
+   los turnos sin que nadie alcance la dominancia. El territorio es la base, pero
    no lo único, para que una facción pequeña y bien atrincherada pueda competir
-   con otra que solo acumule casillas vacías. */
+   con otra que solo acumule casillas vacías.
+   Estos son los valores de las reglas del juego; no los toques sin cambiarlas. */
 export const SCORE = {
-  sector:   3,    // por cada sector controlado
-  edificio: 5,    // por cada instalación en pie
-  baja:     2,    // por cada unidad rival destruida
-  relay:   15,    // bonus único por investigar el Relé Orbital
+  sector:   2,    // por cada sector controlado
+  edificio: 1,    // por cada instalación en pie
+  baja:     1,    // por cada unidad rival destruida (las neutrales no cuentan)
+  relay:    3,    // bonus único por investigar el Relé Orbital
+};
+
+/* Organización del árbol de investigación para el panel.
+ *
+ * Vive junto a TECHS y no en la capa de render a propósito: añadir una tecnología
+ * obliga a decidir aquí mismo en qué grupo entra, en vez de que aparezca huérfana
+ * en la interfaz. Cada `slot` es o una tecnología suelta o una CADENA de niveles
+ * («Perforación I → II») que comparte un único cuadro: el panel enseña el primer
+ * nivel pendiente y, al completarlo, el mismo cuadro pasa al siguiente.
+ * El orden de los grupos y de los slots es el de presentación. */
+export const TECH_GROUPS = [
+  { name:'Tecnologías militares',   slots:[['armor'], ['hopper'], ['relay']] },
+  { name:'Tecnologías de extracción', slots:[['drilling1','drilling2'],
+                                             ['fusion1','fusion2'],
+                                             ['cryo1','cryo2']] },
+];
+
+/* Nombre corto de una cadena: lo que rotula el cuadro compartido por los dos
+   niveles («Perforación Profunda I/II» -> «Perforación Profunda»). */
+export const TECH_CHAIN_NAMES = {
+  drilling1:'Perforación Profunda',
+  fusion1:  'Reactores de Fusión',
+  cryo1:    'Procesado Criogénico',
 };

@@ -1,9 +1,10 @@
 /* Paneles laterales, registro de misión, leyenda y selección de sectores. */
-import { TERRAIN, BUILDING_TYPES, TECHS, MAX_TURNS, TRAIN_COST } from '../config.js';
+import { TERRAIN, BUILDING_TYPES, TECHS, TECH_GROUPS, TECH_CHAIN_NAMES,
+         MAX_TURNS, TRAIN_COST } from '../config.js';
 import { state, sectorLabel, neighborsOf, availableUnits, totalUnits, territoryCount } from '../state.js';
 import { fmtNum, attackPowerDetail, defensePowerDetail, describeAttack, describeDefense } from '../combat.js';
-import { buildBuilding, trainUnit, research, canAfford, canTrainAt, projectedIncome, popCap,
-         canBuild, edificioActivo, habilitado, puedeInvestigar, mantenimientoDe } from '../economy.js';
+import { buildBuilding, trainUnit, research, canAfford, canTrainAt, popCap,
+         canBuild, edificioActivo, habilitado, puedeInvestigar, desgloseIngresos } from '../economy.js';
 import { HOPPER } from '../config.js';
 import { hoppersEn, puedeFabricarHopper, fabricarHopper, destinosPosibles, saltar } from '../hopper.js';
 import { confirmMove } from '../game.js';
@@ -84,28 +85,50 @@ function contadorPoblacion(faction){
     title="${excedido ? 'Superas el tope: no puedes reclutar hasta ampliarlo o perder unidades' : 'Guarniciones / tope de población'}">${unitIconInline(faction.id, RESBAR_ICON)} ${tropas}/${tope}</div>`;
 }
 
+/* Signo explícito: el saldo del turno puede ser negativo si el mantenimiento se
+   come la producción, y «(+-1)» no se lee. */
+function conSigno(n){ return (n<0 ? '−' : '+') + Math.abs(n); }
+
+/* Menú técnico del saldo previsto: de dónde sale y a dónde se va el recurso.
+   El mantenimiento se pinta en negativo porque es lo que resta al saldo. */
+function menuDesglose(d, kind){
+  const fila = (etiqueta, n, negativo) =>
+    `<span class="pts-fila"><span>${etiqueta}</span>
+      <b class="${negativo && n>0 ? 'gasto' : ''}">${negativo ? conSigno(-n) : conSigno(n)}</b></span>`;
+  return `<span class="inc-menu">
+    <span class="pts-menu-tit">PRÓXIMO TURNO ${resIcon(kind,13)}</span>
+    ${fila('Sectores dominados', d.terreno[kind])}
+    ${fila('Edificios de extracción', d.edificios[kind])}
+    ${fila('Mantenimiento de instalaciones', d.mantenimiento[kind], true)}
+    <span class="pts-fila pts-total"><span>SALDO</span><b>${conSigno(d.neto[kind])}</b></span>
+  </span>`;
+}
+
 export function renderResbar(){
   const p = state.factions[0];
-  // el incremento sale del mismo cálculo que luego cobra produceResources()
-  const inc = projectedIncome(p);
+  // el saldo del turno = producción (la misma que cobra produceResources) menos el
+  // mantenimiento que cobra pagarMantenimiento; las dos partidas salen del desglose
+  const d = desgloseIngresos(p);
   // se muestra siempre, también cuando es +0: así se ve de un vistazo qué recurso
   // ha dejado de entrar (p. ej. el hielo si no controlas ningún casquete)
-  const chip = (cls, kind, valor, delta) =>
-    `<div class="res ${cls}">${resIcon(kind,RESBAR_ICON)} ${Math.floor(valor)}<span class="res-inc">(+${delta})</span></div>`;
+  const chip = (cls, kind, valor) =>
+    `<div class="res ${cls}">${resIcon(kind,RESBAR_ICON)} ${Math.floor(valor)}<span
+      class="res-inc${d.neto[kind]<0?' negativo':''}" tabindex="0"
+      >(${conSigno(d.neto[kind])})${menuDesglose(d, kind)}</span></div>`;
   document.getElementById('resbar').innerHTML =
-    chip('regolith','regolith', p.resources.regolith, inc.regolith) +
-    chip('helium',  'helium3',  p.resources.helium3,  inc.helium3) +
-    chip('ice',     'ice',      p.resources.ice,      inc.ice) +
+    chip('regolith','regolith', p.resources.regolith) +
+    chip('helium',  'helium3',  p.resources.helium3) +
+    chip('ice',     'ice',      p.resources.ice) +
     contadorPoblacion(p);
   renderStats();
 }
 
-/* Grupo «Est. Juego»: ronda en curso y puntuación de cada facción, la que decide
-   la victoria técnica si se agotan las rondas. El desglose va en un menú flotante
+/* Grupo «Est. Juego»: turno en curso y puntuación de cada facción, la que decide
+   la victoria técnica si se agotan los turnos. El desglose va en un menú flotante
    que se abre al pasar el ratón, para no llenar la cabecera de cifras. */
 export function renderStats(){
   document.getElementById('statbody').innerHTML =
-    `<span class="ronda">RONDA ${state.turn} / ${MAX_TURNS}</span>` +
+    `<span class="ronda">TURNO ${state.turn} / ${MAX_TURNS}</span>` +
     state.factions.map(f => {
       const d = scoreDetail(f);
       return `<span class="fpts ${f.alive?'':'fdead'}" tabindex="0">
@@ -288,6 +311,37 @@ export function renderHexPanel(){
   }
 }
 
+/* Un cuadro del árbol. `slot` es la cadena de niveles que comparte cuadro: se
+   enseña el primer nivel pendiente y, al completarlo, el mismo cuadro pasa al
+   siguiente. Cuando la cadena está entera, se queda mostrando el último nivel
+   como completado. */
+function cuadroTecnologia(player, slot, conLab){
+  const pendiente = slot.find(id => !player.techs.has(id));
+  const t = TECHS.find(x => x.id === (pendiente || slot[slot.length-1]));
+  const done = !pendiente;
+  const nivel = slot.length > 1 ? slot.indexOf(t.id) + 1 : 0;
+  // el rótulo del cuadro es el nombre de la familia; el nivel se marca aparte para
+  // que al pasar de I a II el cuadro no parezca otro distinto
+  const titulo = nivel ? `${TECH_CHAIN_NAMES[slot[0]]} <span class="tech-nivel">${'I'.repeat(nivel)}</span>`
+                       : t.name;
+  const previa = t.requiere ? TECHS.find(x => x.id === t.requiere) : null;
+  const faltaPrevia = !!(previa && !player.techs.has(previa.id));
+  const disponible = puedeInvestigar(player, t);
+  const afford = player.resources.helium3 >= t.cost && disponible;
+  const motivo = faltaPrevia ? `Requiere ${previa.name}` : (!conLab ? 'Requiere Laboratorio activo' : '');
+  // misma estructura que las opciones de construcción: título, coste, ventaja y
+  // el botón a la derecha, para que el panel se lea igual en las dos secciones
+  return `<div class="tech-item build-opt ${done?'done':''} ${!done&&!disponible?'bloqueada':''}">
+    <div class="bo-name">
+      <span class="bo-tit">${titulo}</span>
+      <span class="bo-cost">${done?'✓ COMPLETO':`Recursos necesarios: ${t.cost} ${resIcon('helium3',11)}`}</span>
+      <span class="bo-vent">${t.desc}</span>
+      ${motivo&&!done?`<span class="bo-bloqueo">${motivo}</span>`:''}
+    </div>
+    ${done?'':`<button class="btn" data-tech="${t.id}" ${afford?'':'disabled'}>INVESTIGAR</button>`}
+  </div>`;
+}
+
 export function renderTechs(){
   const player = state.factions[0];
   const conLab = habilitado(player, 'research');
@@ -296,26 +350,14 @@ export function renderTechs(){
   const aviso = conLab ? '' :
     `<div class="empty-hint">Necesitas un <b>Laboratorio</b> construido y con su
       mantenimiento pagado para acceder a la investigación.</div>`;
-  lista.innerHTML = aviso + TECHS.map(t=>{
-    const done = player.techs.has(t.id);
-    const previa = t.requiere ? TECHS.find(x => x.id === t.requiere) : null;
-    const faltaPrevia = !!(previa && !player.techs.has(previa.id));
-    const disponible = puedeInvestigar(player, t);
-    const afford = player.resources.helium3 >= t.cost && disponible;
-    const motivo = faltaPrevia ? `Requiere ${previa.name}` : (!conLab ? 'Requiere Laboratorio activo' : '');
-    // misma estructura que las opciones de construcción: título, coste, ventaja y
-    // el botón a la derecha, para que el panel se lea igual en las dos secciones
-    return `<div class="tech-item build-opt ${done?'done':''} ${!done&&!disponible?'bloqueada':''}">
-      <div class="bo-name">
-        <span class="bo-tit">${t.name}</span>
-        <span class="bo-cost">${done?'✓ COMPLETO':`Recursos necesarios: ${t.cost} ${resIcon('helium3',11)}`}</span>
-        <span class="bo-vent">${t.desc}</span>
-        ${motivo&&!done?`<span class="bo-bloqueo">${motivo}</span>`:''}
-      </div>
-      ${done?'':`<button class="btn" data-tech="${t.id}" ${afford?'':'disabled'}>INVESTIGAR</button>`}
-    </div>`;
-  }).join('');
-  document.querySelectorAll('[data-tech]').forEach(btn=>{
+  // grupos siempre desplegados: son dos y caben, y plegarlos escondería la mitad
+  // del árbol justo cuando hay que decidir en qué gastar el helio-3
+  lista.innerHTML = aviso + TECH_GROUPS.map(g => `
+    <div class="tech-group">
+      <p class="tech-group-tit">${g.name}</p>
+      ${g.slots.map(slot => cuadroTecnologia(player, slot, conLab)).join('')}
+    </div>`).join('');
+  lista.querySelectorAll('[data-tech]').forEach(btn=>{
     btn.addEventListener('click', ()=>research(btn.getAttribute('data-tech')));
   });
 }

@@ -6,6 +6,27 @@ import { axialToPixel, shade, pt } from './svg-utils.js';
 import { TERRAIN_TILE_DEFS, terrainTileUse } from './terrain-icons.js';
 import { RESOURCE_ICON_DEFS, resourceIconUse } from './resource-icons.js';
 import { UNIT_ICON_DEFS, unitTokenUse } from './unit-icon.js';
+import { hoppersEn } from '../hopper.js';
+
+/* Colocación de las unidades dentro de la loseta.
+ *
+ * La ficha de infantería lleva su contador DEBAJO, solapado un cuarto de su alto,
+ * en vez de al lado: así el hueco de la derecha queda libre para el Transportador
+ * cuando ambos comparten sector. Ese apilado vertical es lo que obliga a subir el
+ * grupo (CY=3 y no 10): un hexágono se estrecha deprisa hacia abajo, y con la
+ * ficha centrada más abajo el contador de dos cifras se salía de la loseta.
+ *
+ * Cuando conviven los dos tipos de unidad, la infantería se va a la izquierda y el
+ * Transportador a la derecha; con una sola, se queda centrada. SEPARACION es el
+ * máximo que admite la loseta sin que la ficha desborde sus lados. */
+const UNIDAD_CY = 2;        // centro vertical de la ficha, respecto al centro de la loseta
+const SEPARACION = 10;      // desplazamiento lateral de cada unidad cuando hay dos tipos
+/* Bajada de la línea base del contador respecto al centro de la ficha. Medido
+   sobre el texto ya pintado (no calculado a partir del cuerpo de la fuente: el
+   trazo de contorno de .hexunits engorda el glifo), de forma que el cuarto
+   superior del número quede solapado con la parte baja de la ficha. Subirlo saca
+   un contador de dos cifras por el lado inclinado de la loseta. */
+const NUM_BAJADA = 15.0;
 
 export let mapZoom = 1;
 
@@ -80,6 +101,10 @@ export function renderMap(){
   // los bordes se acumulan aparte y se pintan al final, por encima de todos los
   // hexágonos: si fueran dentro de cada <g>, el vecino dibujado después los taparía
   let bordes = '';
+  // Y los realces (selección, objetivo y apoyos) se acumulan para pintarse encima
+  // de los bordes: el contorno de territorio es más grueso que ellos y, dibujado
+  // después, escondía justo la loseta que el jugador acaba de señalar.
+  let realces = '';
   for(const [h,pos] of ordered){
     const {x,y,elev} = pos;
     const topY = y - elev;
@@ -93,10 +118,11 @@ export function renderMap(){
     const rightFill = shade(baseColor, -0.14);
 
     let cls='hex';
-    if(state.selected && state.selected.q===h.q && state.selected.r===h.r) cls+=' hex-sel';
-    if(state.pending && state.pending.target.q===h.q && state.pending.target.r===h.r) cls+=' hex-target';
-    if(inList(supAtk,h)) cls+=' hex-supatk';
-    if(inList(supDef,h)) cls+=' hex-supdef';
+    let realce = null;
+    if(state.selected && state.selected.q===h.q && state.selected.r===h.r) realce='sel';
+    else if(state.pending && state.pending.target.q===h.q && state.pending.target.r===h.r) realce='target';
+    else if(inList(supAtk,h)) realce='supatk';
+    else if(inList(supDef,h)) realce='supdef';
 
     const corners=[], baseCorners=[];
     for(let i=0;i<6;i++){
@@ -114,6 +140,10 @@ export function renderMap(){
     }
 
     html += `<polygon class="hexface" points="${corners.map(pt).join(' ')}" fill="${topFill}" stroke="rgba(255,255,255,.18)"></polygon>`;
+
+    if(realce){
+      realces += `<polygon class="hexhl hexhl-${realce}" points="${corners.map(pt).join(' ')}"></polygon>`;
+    }
 
     /* Frontera del territorio. Basta con dibujar los lados que dan a alguien que no
        es de la misma facción: la unión de esos lados es exactamente el perímetro
@@ -143,19 +173,36 @@ export function renderMap(){
         ? resourceIconUse(b.resource, x, topY-9)
         : `<text class="hexicon" x="${x}" y="${topY-6}">${b.icon}</text>`;
     }
+    const hoppers = hoppersEn(h);
+    // con los dos tipos presentes cada uno se aparta a un lado; con uno solo, centrado
+    const juntos = h.units>0 && hoppers>0;
+    const cyUnidad = topY + UNIDAD_CY;
     if(h.units>0){
-      html += unitTokenUse(h.owner, x, topY+10);
-      html += `<text class="hexunits" x="${x+15}" y="${topY+15}" text-anchor="middle">${h.units}</text>`;
-      // candado: guarnición propia que ya agotó su movimiento en esta ronda
+      const ux = juntos ? x - SEPARACION : x;
+      html += unitTokenUse(h.owner, ux, cyUnidad);
+      // el contador va centrado bajo la ficha, con su cuarto superior solapándola
+      const numY = cyUnidad + NUM_BAJADA;
+      html += `<text class="hexunits" x="${ux}" y="${numY.toFixed(1)}" text-anchor="middle">${h.units}</text>`;
+      // candado: guarnición propia que ya agotó su movimiento en este turno.
+      // Va centrado sobre la ficha, como un símbolo de prohibido encima de ella.
       if(h.owner===0 && availableUnits(h)===0){
-        html += `<text class="hexspent" x="${x-13}" y="${topY+15}" text-anchor="middle">⊘</text>`;
+        html += `<text class="hexspent" x="${ux}" y="${cyUnidad}" text-anchor="middle"
+          dominant-baseline="central">⊘</text>`;
       }
+    }
+    // Transportador: provisionalmente una «H» del color de su facción, con la misma
+    // tipografía y cuerpo que el contador de guarniciones.
+    if(hoppers>0){
+      const hx = juntos ? x + SEPARACION : x;
+      const color = h.owner!=null ? state.factions[h.owner].color : '#fff';
+      html += `<text class="hexhopper" x="${hx}" y="${cyUnidad}" text-anchor="middle"
+        dominant-baseline="central" fill="${color}">H${hoppers>1?'×'+hoppers:''}</text>`;
     }
     const availTxt = h.owner===0 ? ` — disponibles: ${availableUnits(h)}/${h.units}` : '';
     html += `<title>${sectorLabel(h)} — ${TERRAIN[h.terrain].name}${faction?(' — '+faction.name):''}${availTxt}</title>`;
     html += `</g>`;
   }
-  svg.innerHTML = html + bordes;
+  svg.innerHTML = html + bordes + realces;
 
   svg.querySelectorAll('.hex').forEach(g=>{
     g.addEventListener('click', ()=>{

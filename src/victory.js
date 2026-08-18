@@ -61,9 +61,9 @@ export function checkVictory(){
     // victoria técnica: decide la puntuación, no el territorio a secas
     const ranked = [...state.factions].sort((a,b)=>score(b)-score(a));
     if(ranked[0].id===0){
-      endGame('VICTORIA TÉCNICA', `Se alcanzó el límite de ${MAX_TURNS} rondas. Ganas por puntuación con ${score(player)} puntos frente a los ${score(ranked[1])} de ${ranked[1].name}.`);
+      endGame('VICTORIA TÉCNICA', `Se alcanzó el límite de ${MAX_TURNS} turnos. Ganas por puntuación con ${score(player)} puntos frente a los ${score(ranked[1])} de ${ranked[1].name}.`);
     } else {
-      endGame('DERROTA TÉCNICA', `Se alcanzó el límite de ${MAX_TURNS} rondas. ${ranked[0].name} gana por puntuación: ${score(ranked[0])} puntos frente a tus ${score(player)}.`);
+      endGame('DERROTA TÉCNICA', `Se alcanzó el límite de ${MAX_TURNS} turnos. ${ranked[0].name} gana por puntuación: ${score(ranked[0])} puntos frente a tus ${score(player)}.`);
     }
   }
 }

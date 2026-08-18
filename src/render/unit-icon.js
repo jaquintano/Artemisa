@@ -82,11 +82,12 @@ const NEUTRAL_IDX = PALETA.length - 1;
 export const UNIT_ICON_DEFS = '<defs>' +
   PALETA.map((c, i) => `<g id="unit-${i}">${bustoMarkup(c)}</g>`).join('') + '</defs>';
 
-/* Algo mayor que el cubo al que sustituye (15 u): un busto con visor y rejilla
-   necesita más píxeles que tres polígonos planos para leerse. El margen está
-   comprobado: centrado en topY+10 ocupa de topY-1 a topY+21, así que no toca el
-   icono de instalación (acaba en topY-1.5) ni el contador (va en x+15). */
-export const UNIT_ICON_SIZE = 22;
+/* Un 20 % por debajo de los 22 u que medía antes: en una loseta pueden convivir la
+   guarnición y un Transportador, y a tamaño completo se apelotonaban. Sigue siendo
+   mayor que el cubo al que sustituyó (15 u) porque un busto con visor y rejilla
+   necesita más píxeles que tres polígonos planos para leerse.
+   Dónde se coloca dentro de la loseta lo decide map.js (UNIDAD_CY/SEPARACION). */
+export const UNIT_ICON_SIZE = 22 * 0.8;
 
 /* `ownerId` null = guarnición neutral. Requiere UNIT_ICON_DEFS en el SVG. */
 export function unitTokenUse(ownerId, cx, cy, size){

@@ -27,19 +27,48 @@ export function bonoTecnologico(faction, tipoEdificio){
   return total;
 }
 
-export function projectedIncome(faction){
-  const gain = {regolith:0, helium3:0, ice:0};
+const RECURSOS = ['regolith','helium3','ice'];
+const cero = () => ({regolith:0, helium3:0, ice:0});
+
+/* Desglose de lo que entrará y saldrá en el próximo cierre de turno, separado en
+ * las tres partidas que enseña el menú técnico de la barra superior: lo que dan
+ * los sectores por su terreno, lo que añaden las instalaciones de extracción (con
+ * sus bonos tecnológicos) y lo que se va en mantenimiento.
+ *
+ * Esta es la cuenta única de producción: `projectedIncome()` no repite el bucle,
+ * suma estas dos partidas. Añadir un bono nuevo se hace aquí y la previsión, el
+ * cobro y el desglose siguen contando lo mismo.
+ *
+ * El mantenimiento se devuelve en positivo (quien lo pinte decide el signo) y NO
+ * se descuenta de la producción: lo cobra pagarMantenimiento() por separado, así
+ * que restarlo dentro de projectedIncome lo cobraría dos veces. `neto` es lo que
+ * de verdad varía el montón de recursos de un turno al siguiente. */
+export function desgloseIngresos(faction){
+  const terreno = cero(), edificios = cero();
   for(const h of state.hexes.values()){
     if(h.owner!==faction.id) continue;
     const t = TERRAIN[h.terrain];
-    gain.regolith += t.regolith; gain.helium3 += t.helium3; gain.ice += t.ice;
+    terreno.regolith += t.regolith; terreno.helium3 += t.helium3; terreno.ice += t.ice;
     if(!edificioActivo(h)) continue;
     const b = BUILDING_TYPES[h.building];
     const bono = bonoTecnologico(faction, h.building);
-    gain.regolith += b.produce.regolith + bono.regolith;
-    gain.helium3  += b.produce.helium3  + bono.helium3;
-    gain.ice      += b.produce.ice      + bono.ice;
+    edificios.regolith += b.produce.regolith + bono.regolith;
+    edificios.helium3  += b.produce.helium3  + bono.helium3;
+    edificios.ice      += b.produce.ice      + bono.ice;
   }
+  const mantenimiento = mantenimientoDe(faction);
+  const neto = cero();
+  for(const r of RECURSOS) neto[r] = terreno[r] + edificios[r] - mantenimiento[r];
+  return { terreno, edificios, mantenimiento, neto };
+}
+
+/* Producción bruta del próximo turno, sin descontar mantenimiento: es lo que
+   abona produceResources(). Para lo que realmente se gana o se pierde en el turno,
+   usa `desgloseIngresos(faction).neto`. */
+export function projectedIncome(faction){
+  const { terreno, edificios } = desgloseIngresos(faction);
+  const gain = cero();
+  for(const r of RECURSOS) gain[r] = terreno[r] + edificios[r];
   return gain;
 }
 
