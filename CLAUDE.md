@@ -176,8 +176,11 @@ introduce una dependencia del DOM en la capa de lógica, deja de ejecutarse.
 - **El tablero se genera por reglas, no al azar** (`mapgen.js`). Todo arranca
   siendo Mare; encima se tallan una *zona de expansión* por jugador (radio 2 desde
   su base, con exactamente 2 Tierras Altas, 2 Cráter y 2 Parajes Helados) y una
-  *tierra de nadie* central (a 3 o más casillas de toda base) con 1 o 3 de cada
-  tipo según haya 3 o 4 jugadores. La intención es que **ningún jugador salga
+  *tierra de nadie* central con 1 o 3 de cada tipo según haya 3 o 4 jugadores.
+  Esas especiales del centro **no se esparcen**: forman un racimo pegado a la
+  loseta central, de modo que el centro es un premio concreto y no un reparto
+  difuso. A cara o cruz se incluye la casilla central o se deja fuera; con 3
+  jugadores eso da exactamente «el centro y dos adyacentes» o «tres adyacentes». La intención es que **ningún jugador salga
   favorecido por el sorteo**: si tocas el reparto, mantén esa simetría.
   `generarMapa()` se autovalida y revienta si los conteos no cuadran, en vez de
   devolver un tablero injusto en silencio; `tests/mapgen-test.mjs` lo comprueba

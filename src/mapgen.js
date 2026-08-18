@@ -105,6 +105,38 @@ function unidadesNeutrales(distMin, terreno, rnd){
 /* Cuántas losetas especiales de cada tipo van en la tierra de nadie. */
 function especialesDelCentro(N){ return N === 3 ? 1 : 3; }
 
+function barajar(lista, rnd){
+  const a = lista.slice();
+  for(let i=a.length-1; i>0; i--){
+    const j = Math.floor(rnd()*(i+1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/* Núcleo central: las `cuantas` losetas más próximas al centro del mapa.
+ *
+ * Las especiales de la tierra de nadie no se esparcen: forman un racimo en mitad
+ * del tablero, para que el centro sea un premio concreto por el que pelear y no
+ * un reparto difuso. A cara o cruz se incluye la loseta central o se deja fuera,
+ * que son las dos variantes admitidas: con 3 jugadores salen exactamente «el
+ * centro y dos adyacentes» o «tres adyacentes».
+ *
+ * Con 4 jugadores hacen falta 9 y el centro más su anillo solo dan 7, así que se
+ * echa mano del segundo anillo; está comprobado que también cae entero dentro de
+ * la tierra de nadie en ese tamaño. Los empates a igual distancia se desempatan
+ * al azar para que el racimo no salga siempre con la misma forma. */
+function nucleoCentral(todas, cuantas, rnd){
+  const centro = todas.find(h => h.q === 0 && h.r === 0);
+  const incluirCentro = rnd() < 0.5;
+  const resto = todas
+    .filter(h => h !== centro)
+    .map(h => ({ h, d: distancia(h, centro), desempate: rnd() }))
+    .sort((a, b) => a.d - b.d || a.desempate - b.desempate)
+    .map(x => x.h);
+  return incluirCentro ? [centro, ...resto.slice(0, cuantas-1)] : resto.slice(0, cuantas);
+}
+
 export function generarMapa(N = 3, rnd = Math.random){
   const R = radiusFor(N);
   const hexes = new Map();
@@ -136,13 +168,12 @@ export function generarMapa(N = 3, rnd = Math.random){
     }
   }
 
-  // 11-13. tierra de nadie: a 3 o más casillas de todas las bases
-  const centro = todas.filter(h => bases.every(b => distancia(h, b) >= 3));
+  // 11-13. tierra de nadie: las especiales van en un racimo en mitad del tablero
   const porTipo = especialesDelCentro(N);
-  for(const tipo of ESPECIALES){
-    const libres = centro.filter(h => h.terrain === 'mare');
-    for(const h of tomar(libres, porTipo, rnd)) h.terrain = tipo;
-  }
+  const nucleo = barajar(nucleoCentral(todas, porTipo * ESPECIALES.length, rnd), rnd);
+  ESPECIALES.forEach((tipo, i) => {
+    for(let k=0; k<porTipo; k++) nucleo[i*porTipo + k].terrain = tipo;
+  });
 
   // 17-18. guarniciones neutrales
   for(const h of todas){
@@ -180,6 +211,31 @@ export function validarMapa({ hexes, radius, bases, jugadores }){
   }
   for(const b of bases){
     if(b.terrain !== 'mare') fallos.push(`la base de ${b.q},${b.r} no es Mare`);
+  }
+
+  /* Las especiales del centro deben formar un racimo pegado a la loseta central y
+     estar dentro de la tierra de nadie. Se comprueba que las que caen fuera de
+     toda zona de expansión ocupen justo las posiciones más próximas al centro. */
+  const todas = [...hexes.values()];
+  const centro = todas.find(h => h.q === 0 && h.r === 0);
+  const delCentro = todas.filter(h => h.terrain !== 'mare' &&
+    bases.every(b => distancia(h, b) >= 3));
+  const cuantas = especialesDelCentro(jugadores) * ESPECIALES.length;
+  if(delCentro.length !== cuantas){
+    fallos.push(`${delCentro.length} especiales en tierra de nadie, esperaba ${cuantas}`);
+  }
+  const radioMax = Math.max(...delCentro.map(h => distancia(h, centro)));
+  const cabenEn = todas.filter(h => distancia(h, centro) <= radioMax).length;
+  if(delCentro.length < cabenEn && radioMax > 1){
+    // si se usa el anillo 2 debe ser porque el 1 se ha llenado entero
+    const enAnillo1 = delCentro.filter(h => distancia(h, centro) <= 1).length;
+    const disponiblesAnillo1 = todas.filter(h => distancia(h, centro) <= 1).length;
+    if(enAnillo1 < disponiblesAnillo1 - 1){
+      fallos.push(`el racimo central se dispersa: llega a radio ${radioMax} con solo ${enAnillo1} losetas en radio 1`);
+    }
+  }
+  for(const h of delCentro){
+    if(distancia(h, centro) > 2) fallos.push(`especial central en (${h.q},${h.r}) a radio ${distancia(h, centro)} del centro`);
   }
   // las lindantes con una base nunca deben superar 3 unidades neutrales
   for(const h of hexes.values()){

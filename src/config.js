@@ -4,7 +4,7 @@
    no puede leer package.json sin una petición extra, así que la versión vive aquí
    y `node tools/version.mjs` la copia a package.json. No la edites a mano en dos
    sitios; usa el script y quedarán siempre iguales. */
-export const APP_VERSION = '1.0.6';
+export const APP_VERSION = '1.0.7';
 
 /* Número de jugadores de la partida: 3 o 4. Determina el tamaño del tablero
    (3 -> lado 5, 61 losetas; 4 -> lado 6, 91 losetas) y cuántas facciones entran

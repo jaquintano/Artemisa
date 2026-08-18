@@ -21,6 +21,7 @@ for(const jugadores of [3, 4]){
   console.log(`\n=== ${jugadores} jugadores | lado ${R+1} | ${totalEsperado} losetas ===`);
 
   const distsBases = new Set();
+  const formas = new Map();
   const unidadesPorDistancia = new Map();
 
   for(let i=0; i<N_MAPAS; i++){
@@ -63,6 +64,32 @@ for(const jugadores of [3, 4]){
       if(n !== porTipoCentro) mal(`centro con ${n} de ${tipo}, esperaba ${porTipoCentro}`);
     }
 
+    /* Racimo central: las especiales de la tierra de nadie tienen que ocupar la
+       loseta central y/o sus adyacentes, no repartirse por todo el hueco. */
+    const cero = todas.find(h => h.q === 0 && h.r === 0);
+    const delCentro = centro.filter(h => h.terrain !== 'mare');
+    const radios = delCentro.map(h => distancia(h, cero));
+    const conCentro = radios.includes(0);
+    if(jugadores === 3){
+      // debe ser «centro + 2 adyacentes» o «3 adyacentes»
+      const enAnillo1 = radios.filter(d => d === 1).length;
+      const valido = (conCentro && enAnillo1 === 2) || (!conCentro && enAnillo1 === 3);
+      if(!valido) mal(`racimo inválido: radios ${radios.sort().join(',')}`);
+      formas.set(conCentro ? 'centro + 2 adyacentes' : '3 adyacentes',
+                 (formas.get(conCentro ? 'centro + 2 adyacentes' : '3 adyacentes') || 0) + 1);
+    } else {
+      // 9 losetas: centro y anillo 1 al completo antes de tocar el anillo 2
+      if(Math.max(...radios) > 2) mal(`racimo llega a radio ${Math.max(...radios)}`);
+      const enAnillo1 = radios.filter(d => d === 1).length;
+      if(enAnillo1 !== 6) mal(`racimo con ${enAnillo1} losetas en el anillo 1, esperaba 6`);
+      formas.set(conCentro ? 'centro + anillo1 + 2' : 'anillo1 + 3',
+                 (formas.get(conCentro ? 'centro + anillo1 + 2' : 'anillo1 + 3') || 0) + 1);
+    }
+    // y siguen dentro de la tierra de nadie
+    for(const h of delCentro){
+      if(bases.some(b => distancia(h, b) < 3)) mal(`especial central en (${h.q},${h.r}) fuera de tierra de nadie`);
+    }
+
     // regla 14: totales absolutos
     for(const tipo of ESPECIALES){
       const n = todas.filter(h => h.terrain === tipo).length;
@@ -88,6 +115,7 @@ for(const jugadores of [3, 4]){
   console.log(`  ${N_MAPAS} mapas generados`);
   console.log(`  distancia entre bases contiguas: ${[...distsBases].join(', ')}`);
   console.log(`  especiales: ${espPorTipo} de cada tipo (${espPorTipo*3} en total)`);
+  console.log(`  formas del racimo central: ${[...formas].map(([k,v])=>`${k} x${v}`).join(" | ")}`);
   console.log(`  Mare libre: ${totalEsperado - espPorTipo*3 - jugadores}`);
   console.log('  curva de guarniciones neutrales (regla 18):');
   for(const d of [...unidadesPorDistancia.keys()].sort((a,b)=>a-b)){
