@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "conquista-lunar",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["tools/serve.mjs", "8000"],
+      "port": 8000
+    }
+  ]
+}

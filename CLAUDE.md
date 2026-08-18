@@ -43,7 +43,7 @@ src/
   combat.js         apoyo, fuerzas de ataque/defensa, resolución
   economy.js        producción, mantenimiento, tope de población, construcción
   hopper.js         Transportador: fabricación y reglas de salto
-  ai.js             turno de las rivales: ataque, concentración, construcción…
+  ai.js             turno de las rivales en 6 fases: mantenimiento, recluta, ataque, maniobra, ciencia, expansión
   victory.js        eliminación, dominancia y victoria técnica por puntos
   game.js           órdenes de movimiento, cierre de turno, arranque
   main.js           único módulo que cablea lógica y presentación
@@ -177,14 +177,29 @@ node tests/mapgen-test.mjs 200   # reglas de generación sobre cientos de mapas
 
 ## Balance
 
-Medido con `node tests/balance-sim.mjs 200`: **~75 % de las partidas se resuelven
-por conquista** antes de las 80 rondas, con el líder sobre el 57 % del mapa.
+Medido con `node tests/balance-sim.mjs 400`: **~62 % de las partidas se resuelven
+por conquista** antes de las 80 rondas, con el líder sobre el 57 % del mapa (el
+resto se decide por victoria técnica por puntos).
 
-La única palanca que de verdad movió esto fue `concentrarTropas()` en `ai.js`: sin
-ella la IA repartía las tropas de una en una y no rompía ningún frente (0 %
-resueltas). **Ya se midieron y descartaron** como causa del estancamiento el apoyo
+`ai.js` ejecuta el turno en seis fases fijas (mantenimiento como reserva,
+reclutamiento, ataque quirúrgico, maniobra de apoyo, tecnología y expansión). La
+IA es deliberadamente más estratégica que la carrera por territorio del prototipo:
+recluta hasta el tope de población cuando no domina el frente, prioriza capturar
+Parajes Helados y Cráteres (más He-3 y tope de población) y solo asalta con
+victoria matemática garantizada. Eso cambia el 75 % del rush anterior por un ~62 %
+más "de manual".
+
+La palanca que de verdad mueve esto sigue siendo `concentrarTropas()`: sin ella la
+IA repartía las tropas de una en una y no rompía ningún frente (0 % resueltas).
+**Por eso corre cada turno**, no solo los turnos sin ataque: mueve tropas
+interiores (inalcanzables ese turno) al frente, así que no compite con la fase de
+ataque. Medido: gatearla tras "solo si no atacó" cae a ~53 %.
+
+**Ya se midieron y descartaron** como causa del estancamiento el apoyo
 (`SUPPORT_FACTOR`), los recursos, el tope de población (barrido de 4 a 30 sin
-efecto) y la cadencia de reclutamiento; no repitas esas pruebas. `MAX_TURNS` está
+efecto) y la cadencia de reclutamiento; no repitas esas pruebas. Medido también:
+enviar toda la guarnición al asalto (sin dejar 1) baja a ~29 %, y perseguir la
+loseta más fácil en vez de la prioridad de terreno baja a ~55 %. `MAX_TURNS` está
 en 80 porque las partidas piden ~65 rondas para decidirse. **Mide cada cambio de
 balance con la simulación**, no a ojo.
 

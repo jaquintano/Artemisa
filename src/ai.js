@@ -1,15 +1,45 @@
-/* Turnos de la IA rival, en cinco fases: ataque, concentración de tropas,
-   construcción, reclutamiento e investigación. */
-import { BUILDING_TYPES, TECHS, TRAIN_COST } from './config.js';
+/* Turno de la IA rival en SEIS fases, en el orden fijado por el diseño:
+ *   1. Mantenimiento y logística  (reserva de recursos)
+ *   2. Evaluación de tropas y reclutamiento
+ *   3. Ataque quirúrgico de alta probabilidad
+ *   4. Maniobra y posicionamiento de apoyo
+ *   5. Inversión en desarrollo tecnológico
+ *   6. Expansión de infraestructura económica y militar
+ *
+ * Sobre la Fase 1: el cobro REAL del mantenimiento no ocurre aquí, sino en
+ * pagarMantenimiento() al cerrar el turno (es global y afecta a todas las
+ * facciones). Pagarlo también aquí cobraría dos veces. Así que esta fase no
+ * "paga": aparta una reserva de recursos igual al mantenimiento debido para que
+ * las fases siguientes no la gasten, y la IA nunca se quede sin cubrir sus
+ * edificios. El apagado selectivo de torretas/cuarteles sigue viviendo en
+ * economy.js; reservar de antemano evita entrar en esa situación. */
+import { BUILDING_TYPES, TECHS, TRAIN_COST, HOPPER } from './config.js';
 import { state, neighborsOf, availableUnits, totalUnits, log } from './state.js';
 import { attackPower, defensePower, resolveCombat } from './combat.js';
-import { canBuild, canTrainAt, canAfford, payCost, popCap } from './economy.js';
+import { canBuild, canTrainAt, canAfford, payCost, popCap,
+         mantenimientoDe, puedeInvestigar } from './economy.js';
+import { hoppersEn, destinosPosibles, saltar,
+         puedeFabricarHopper, fabricarHopper } from './hopper.js';
 
-/* La IA no gasta hasta el último recurso: exige un colchón sobre el coste para no
-   quedarse sin margen de reacción justo después de construir. */
-function conMargen(cost){
-  return { regolith:(cost.regolith||0)+10, helium3:(cost.helium3||0)+5, ice:(cost.ice||0)+2 };
+/* ---------- Reserva de mantenimiento (Fase 1) ---------- */
+
+/* Recursos que la IA aparta antes de gastar: el mantenimiento debido más un
+   pequeño colchón, para no quedar justo al borde del apagón tras invertir. */
+function reservaDe(faction){
+  const m = mantenimientoDe(faction);
+  return { regolith:(m.regolith||0), helium3:(m.helium3||0)+1, ice:(m.ice||0)+1 };
 }
+
+/* ¿Puede pagar `cost` conservando intacta la reserva? */
+function puedoGastar(faction, cost, reserva){
+  return canAfford(faction, {
+    regolith:(cost.regolith||0)+(reserva.regolith||0),
+    helium3: (cost.helium3 ||0)+(reserva.helium3 ||0),
+    ice:     (cost.ice     ||0)+(reserva.ice     ||0),
+  });
+}
+
+/* ---------- Geografía del frente ---------- */
 
 /* Distancia de cada sector propio al frente, en saltos por territorio propio.
    0 = linda con algo que no es nuestro, o sea que es atacable. */
@@ -30,15 +60,115 @@ function distanciasAlFrente(factionId){
   return dist;
 }
 
+/* Sectores propios que lindan con algo no propio: la línea atacable. */
+function sectoresFrontera(factionId){
+  return [...state.hexes.values()].filter(h =>
+    h.owner===factionId && neighborsOf(h).some(n => n.owner!==factionId));
+}
+
+function contarHoppers(faction){
+  let n=0;
+  for(const h of state.hexes.values()) if(h.owner===faction.id) n+=hoppersEn(h);
+  return n;
+}
+
+/* ---------- Evaluación de ataques (Fases 2 y 3) ---------- */
+
+/* Orden de captura del Paso 3: 1º Parajes Helados, 2º Cráteres, 3º sectores con
+   edificio enemigo, 4º Mare (y el resto). Menor número = mayor prioridad. */
+function prioridadTerreno(h){
+  if(h.terrain==='ice') return 0;
+  if(h.terrain==='crater') return 1;
+  if(h.building) return 2;
+  return 3;
+}
+
+/* Mejor asalto GANADO desde `source`: el objetivo no propio adyacente cuya
+   defensa (con su terreno, instalación y apoyos) sea estrictamente inferior a
+   nuestra fuerza de ataque neta. Entre los que garantizan la victoria elige por
+   prioridad de captura y, a igualdad, el de menor defensa. null si ninguno la
+   garantiza al 100 %. Se deja 1 tropa de guarnición en el origen. */
+function mejorObjetivo(faction, source){
+  const sendable = Math.max(0, availableUnits(source)-1);
+  if(sendable<=0) return null;
+  let best=null;
+  for(const t of neighborsOf(source)){
+    if(t.owner===faction.id) continue;
+    const defF = t.owner!=null ? state.factions[t.owner] : null;
+    const def = defensePower(defF, t, source);
+    if(attackPower(faction, sendable, source, t) <= def) continue; // sin victoria segura
+    if(!best){ best={source, target:t, sendable, def}; continue; }
+    const pa = prioridadTerreno(t), pb = prioridadTerreno(best.target);
+    if(pa < pb || (pa===pb && def < best.def)) best={source, target:t, sendable, def};
+  }
+  return best;
+}
+
+/* ---------- Fase 2: evaluación de tropas y reclutamiento ---------- */
+
+function faseReclutamiento(faction, reserva, dist){
+  // Si ya hay algún asalto con victoria garantizada, no fuerza reclutamiento:
+  // ese ejército del frente ya supera a la loseta rival más débil.
+  const hayAsalto = sectoresFrontera(faction.id).some(s => mejorObjetivo(faction, s));
+  if(hayAsalto) return;
+
+  // Prioridad: fabricar 1 Transportador si tiene la tecnología y no hay ninguno.
+  if(faction.techs.has('hopper') && contarHoppers(faction)===0){
+    const lab = [...state.hexes.values()].find(h => puedeFabricarHopper(faction, h));
+    if(lab && puedoGastar(faction, HOPPER.cost, reserva)) fabricarHopper(lab);
+  }
+
+  // Sin superioridad en el frente: engorda el ejército hasta el tope de población.
+  // Se apila en el cuartel MÁS adelantado para formar un puño capaz de romper una
+  // loseta ya en la Fase 3 de este mismo turno (las tropas recién reclutadas no
+  // han gastado movimiento).
+  const cuarteles = [...state.hexes.values()]
+    .filter(h => h.owner===faction.id && canTrainAt(h))
+    .sort((a,b)=> (dist.get(a)??99) - (dist.get(b)??99));
+  if(!cuarteles.length) return;
+  const destino = cuarteles[0];
+  while(totalUnits(faction) < popCap(faction) && puedoGastar(faction, TRAIN_COST, reserva)){
+    payCost(faction, TRAIN_COST);
+    destino.units += 1;
+  }
+}
+
+/* ---------- Fase 3: ataque quirúrgico de alta probabilidad ---------- */
+
+function faseAtaque(faction){
+  // Recolecta el mejor asalto ganador de cada origen del frente y los ejecuta en
+  // orden de prioridad de captura (helados, cráteres, edificios, mare).
+  const candidatos = [];
+  for(const source of sectoresFrontera(faction.id)){
+    const op = mejorObjetivo(faction, source);
+    if(op) candidatos.push(op);
+  }
+  candidatos.sort((a,b)=> prioridadTerreno(a.target)-prioridadTerreno(b.target) || a.def-b.def);
+
+  let atacó = false;
+  for(const op of candidatos){
+    if(op.target.owner===faction.id) continue;            // ya capturado por otro asalto
+    const sendable = Math.max(0, availableUnits(op.source)-1);
+    if(sendable<=0) continue;                             // origen ya gastado en otro asalto
+    const defF = op.target.owner!=null ? state.factions[op.target.owner] : null;
+    const def = defensePower(defF, op.target, op.source);
+    if(attackPower(faction, sendable, op.source, op.target) > def){
+      resolveCombat(op.source, op.target, sendable);
+      atacó = true;
+    }
+  }
+  return atacó;
+}
+
+/* ---------- Fase 4: maniobra y posicionamiento de apoyo ---------- */
+
 /* Concentración: el problema medido no era falta de tropas sino que estaban
    repartidas de una en una. Un sector que no linda con nadie hostil es
    inalcanzable este turno, así que su guarnición no defiende nada: la vuelca
-   hacia el frente.
- *
- * Se procesa de más profundo a más cercano al frente para que una cadena de
- * sectores interiores avance toda en el mismo turno. Eso NO salta el límite de un
- * sector por ronda: las tropas que llegan quedan marcadas en `movedUnits`, así que
- * `availableUnits()` ya no las cuenta y no encadenan un segundo salto. */
+   hacia el frente. Es la única palanca que de verdad movió el balance (ver
+   CLAUDE.md). Se procesa de más profundo a más cercano al frente para que una
+   cadena de sectores interiores avance toda en el mismo turno, sin saltarse el
+   límite de un sector por ronda (lo que llega queda marcado en movedUnits). */
 function concentrarTropas(factionId){
   const dist = distanciasAlFrente(factionId);
   const interiores = [...dist.entries()]
@@ -49,8 +179,7 @@ function concentrarTropas(factionId){
     if(envio<=0) continue;
     const destinos = neighborsOf(h).filter(n => n.owner===factionId && dist.get(n)===d-1);
     if(!destinos.length) continue;
-    // refuerza la pila más grande: el objetivo es formar un puño, no repartir
-    destinos.sort((a,b) => b.units - a.units);
+    destinos.sort((a,b) => b.units - a.units);  // refuerza la pila mayor: un puño, no reparto
     const destino = destinos[0];
     h.units -= envio;
     destino.units += envio;
@@ -58,72 +187,133 @@ function concentrarTropas(factionId){
   }
 }
 
+/* Salto del Transportador hacia el frente: si un hopper con tropas está en la
+   retaguardia, las lleva de golpe a un sector propio fronterizo en vez de
+   gastarlas caminando un sector por ronda. Prepara el puño del turno siguiente. */
+function saltarHopperAlFrente(faction, dist){
+  for(const origen of state.hexes.values()){
+    if(origen.owner!==faction.id || hoppersEn(origen)<=0) continue;
+    if(availableUnits(origen)<=0 || (dist.get(origen)??0)===0) continue;
+    const destinos = destinosPosibles(origen)
+      .filter(d => d.owner===faction.id && (dist.get(d)??99)===0)
+      .sort((a,b)=> b.units - a.units);
+    if(destinos.length){
+      saltar(origen, destinos[0], HOPPER.capacidad);
+      return;   // un salto por turno basta para no vaciar la retaguardia de golpe
+    }
+  }
+}
+
+/* La concentración de retaguardia corre SIEMPRE (mueve tropas interiores que no
+   podían atacar este turno, así que no compite con la Fase 3 y es la palanca de
+   balance de CLAUDE.md). El salto del Transportador al frente es la maniobra
+   discrecional de la Fase 4 propiamente dicha: solo cuando no se atacó. */
+function faseManiobra(faction, dist, atacó){
+  if(!atacó) saltarHopperAlFrente(faction, dist);
+  concentrarTropas(faction.id);
+}
+
+/* ---------- Fase 5: inversión en desarrollo tecnológico ---------- */
+
+/* Investiga una tecnología para `faction`. Replica research() de economy.js
+   (que está cableado al jugador) para una facción cualquiera. La línea del
+   hopper es imprescindible: sin ella hopperDesdeRonda queda a Infinity y la IA
+   nunca podría fabricar Transportadores pese a tener la tecnología. */
+function investigar(faction, tech){
+  faction.resources.helium3 -= tech.cost;
+  faction.techs.add(tech.id);
+  if(tech.id==='hopper') faction.hopperDesdeRonda = state.turn + 1;
+  log(`<b>${faction.name}</b> completa investigación: ${tech.name}`);
+}
+
+function faseTecnologia(faction, reserva){
+  const lab = [...state.hexes.values()].find(h => h.owner===faction.id && h.building==='lab');
+  // Sin Laboratorio: constrúyelo en una casilla vacía de Mare si puede pagarlo.
+  if(!lab){
+    const sitio = [...state.hexes.values()].find(h =>
+      h.owner===faction.id && h.terrain==='mare' && canBuild(h,'lab',faction));
+    if(sitio && puedoGastar(faction, BUILDING_TYPES.lab.cost, reserva)){
+      payCost(faction, BUILDING_TYPES.lab.cost);
+      sitio.building = 'lab';
+    }
+    return;   // recién construido: aún no investiga este turno
+  }
+  // Con Laboratorio: investiga por prioridad estricta. Fusión solo si controla
+  // algún Cráter (donde el Extractor rinde más).
+  const controlaCrater = [...state.hexes.values()]
+    .some(h => h.owner===faction.id && h.terrain==='crater');
+  const orden = ['hopper','armor','relay','fusion1','fusion2'];
+  for(const id of orden){
+    if((id==='fusion1'||id==='fusion2') && !controlaCrater) continue;
+    const tech = TECHS.find(t=>t.id===id);
+    if(!puedeInvestigar(faction, tech)) continue;
+    // Solo gasta He-3 remanente tras la reserva de mantenimiento.
+    if(faction.resources.helium3 < tech.cost + (reserva.helium3||0)) break;
+    investigar(faction, tech);
+    break;   // una investigación por turno
+  }
+}
+
+/* ---------- Fase 6: expansión de infraestructura ---------- */
+
+function faseConstruccion(faction, reserva, dist){
+  // Una sola instalación por turno, respetando la geografía: en el frente,
+  // torreta o cuartel; en retaguardia segura, economía (extractor, fusor y, como
+  // última opción, mina). Se prueban los sectores del frente primero.
+  const vacios = [...state.hexes.values()]
+    .filter(h => h.owner===faction.id && !h.building)
+    .sort((a,b)=> (dist.get(a)??99) - (dist.get(b)??99));
+
+  for(const h of vacios){
+    const enFrente = (dist.get(h)??99)===0;
+    let candidatos;
+    if(enFrente){
+      candidatos = ['turret','barracks'];
+    } else {
+      candidatos = [];
+      if(h.terrain==='crater' || h.terrain==='highlands') candidatos.push('extractor');
+      if(h.terrain==='ice') candidatos.push('melter');
+      candidatos.push('mine');   // última opción, en Mare
+    }
+    for(const tipo of candidatos){
+      const b = BUILDING_TYPES[tipo];
+      if(!canBuild(h, tipo, faction)) continue;
+      // La torreta añade mantenimiento en He-3: no la levantes si no puedes
+      // sostenerlo (se suma a la reserva antes de comprobar el pago).
+      const reservaEfectiva = tipo==='turret'
+        ? { ...reserva, helium3:(reserva.helium3||0) + (b.upkeep?.helium3||0) }
+        : reserva;
+      if(!puedoGastar(faction, b.cost, reservaEfectiva)) continue;
+      payCost(faction, b.cost);
+      h.building = tipo;
+      return;   // una única instalación por turno
+    }
+  }
+}
+
+/* ---------- Turno completo ---------- */
+
 export function aiTakeTurn(factionId){
   const faction = state.factions[factionId];
   if(!faction.alive) return;
 
-  // 1. Ataques/expansión (solo con tropas que no hayan gastado su movimiento este turno)
-  const myHexes = [...state.hexes.values()].filter(h=>h.owner===factionId && availableUnits(h)>1);
-  for(const h of myHexes){
-    const sendable = Math.max(0, availableUnits(h)-1);
-    if(sendable<=0) continue;
-    const targets = neighborsOf(h).filter(n=>n.owner!==factionId);
-    if(!targets.length) continue;
-    // evalúa cada objetivo con el apoyo real de ambos bandos en ese frente concreto
-    targets.sort((a,b)=>{
-      const da = defensePower(a.owner!=null?state.factions[a.owner]:null, a, h);
-      const db = defensePower(b.owner!=null?state.factions[b.owner]:null, b, h);
-      return da - db;
-    });
-    const best = targets[0];
-    const defFaction = best.owner!=null ? state.factions[best.owner] : null;
-    const def = defensePower(defFaction, best, h);
-    if(attackPower(faction, sendable, h, best) > def+0.5){
-      resolveCombat(h, best, sendable);
-    }
-  }
+  // Fase 1: reserva de mantenimiento (el cobro real lo hace pagarMantenimiento()).
+  const reserva = reservaDe(faction);
+  const dist = distanciasAlFrente(factionId);
 
-  // 2. Concentración: sube la retaguardia al frente para el turno que viene
-  concentrarTropas(factionId);
+  // Fase 2: evaluación de tropas y reclutamiento.
+  faseReclutamiento(faction, reserva, dist);
 
-  // 3. Construcción
-  const misSectores = [...state.hexes.values()].filter(h=>h.owner===factionId);
-  let puntosDeRecluta = misSectores.filter(canTrainAt).length;
-  for(const h of misSectores.filter(h=>!h.building)){
-    const options = Object.keys(BUILDING_TYPES).filter(t=>t!=='base' && canBuild(h,t));
-    // Con el reclutamiento limitado a los edificios 'trains', quedarse corto de
-    // cuarteles asfixia la expansión: mientras no llegue a uno por cada 5 sectores,
-    // el Cuartel Lunar pasa por delante del resto de opciones. Ojo con el umbral:
-    // si se calcula de forma que iguale a los que ya tiene, nunca se prioriza y la
-    // IA se queda reclutando solo en su base.
-    if(puntosDeRecluta < 1 + Math.ceil(misSectores.length/5)){
-      options.sort((a,b) => (b==='barracks') - (a==='barracks'));
-    }
-    for(const opt of options){
-      const b = BUILDING_TYPES[opt];
-      if(canAfford(faction, conMargen(b.cost))){
-        payCost(faction, b.cost);
-        h.building = opt;
-        if(b.trains) puntosDeRecluta++;
-        break;
-      }
-    }
-  }
+  // Fase 3: ataque quirúrgico de alta probabilidad.
+  const atacó = faseAtaque(faction);
 
-  // 4. Entrenamiento: solo en base y cuarteles
-  const cuarteles = misSectores.filter(canTrainAt);
-  if(cuarteles.length && canAfford(faction, conMargen(TRAIN_COST))
-     && totalUnits(faction) < popCap(faction)){
-    const target = cuarteles[Math.floor(Math.random()*cuarteles.length)];
-    payCost(faction, TRAIN_COST);
-    target.units += 1;
-  }
+  // Fase 4: maniobra de apoyo (ver faseManiobra: concentración siempre, salto solo
+  // si no hubo ataque).
+  faseManiobra(faction, dist, atacó);
 
-  // 5. Tecnología
-  const nextTech = TECHS.find(t=>!faction.techs.has(t.id) && faction.resources.helium3 >= t.cost+15);
-  if(nextTech){
-    faction.resources.helium3 -= nextTech.cost;
-    faction.techs.add(nextTech.id);
-    log(`<b>${faction.name}</b> completa investigación: ${nextTech.name}`);
-  }
+  // Fase 5: desarrollo tecnológico.
+  faseTecnologia(faction, reserva);
+
+  // Fase 6: expansión de infraestructura (recalcula el frente tras las conquistas).
+  faseConstruccion(faction, reserva, distanciasAlFrente(factionId));
 }
