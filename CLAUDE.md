@@ -91,6 +91,18 @@ anterior aunque el push fuera bien. Para saber qué hay publicado, pide el fiche
 con `cache:'no-store'` (o `curl`), no mires la pestaña. `main.js` compara al
 arrancar su versión con la de `package.json` y avisa en la cabecera si difieren.
 
+**Y `location.reload()` NO trae el código nuevo.** Desde Chrome 54 una recarga
+normal solo revalida el documento principal: los subrecursos se sirven de la caché
+según sus cabeceras, así que llega un `index.html` fresco con los mismos módulos
+viejos (medido: los 18 con `transferSize: 0`). Por eso el aviso de la cabecera no
+recarga a secas, sino que antes refresca con `fetch(url, {cache:'reload'})` cada
+`.js`/`.css` que el navegador cargó de verdad —ese modo salta la caché y además
+deja en ella la respuesta nueva— y solo entonces recarga (`recargarSinCache()` en
+`main.js`). Sin un paso de compilación no se pueden versionar las URL de los
+módulos, que sería la otra salida. Si tocas esto, verifícalo sirviendo la carpeta
+con `Cache-Control: max-age=600`, porque `tools/serve.mjs` no manda cabeceras de
+caché y el fallo **no se reproduce en local**.
+
 ## Cómo ejecutarlo y comprobarlo
 
 Los ES modules no cargan desde `file://` (CORS); hace falta servir la carpeta:

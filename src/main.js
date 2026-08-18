@@ -31,6 +31,29 @@ document.getElementById('overlayrestart').addEventListener('click', startGame);
 const elVersion = document.getElementById('version');
 elVersion.textContent = 'v' + APP_VERSION;
 
+/* Recarga que de verdad trae el código nuevo.
+ *
+ * `location.reload()` a secas NO basta, y este era el fallo: desde Chrome 54 una
+ * recarga normal solo revalida el documento principal; los subrecursos se sirven
+ * de la caché según sus cabeceras. Con el `max-age=600` de GitHub Pages llegaba un
+ * index.html nuevo pero los 18 módulos seguían siendo los viejos —medido, todos
+ * con `transferSize: 0`—, así que APP_VERSION no cambiaba y el aviso se quedaba
+ * clavado hasta que expiraba la caché.
+ *
+ * Los módulos no se pueden versionar en la URL sin un paso de compilación, así que
+ * se refrescan a mano: `cache:'reload'` salta la caché Y guarda en ella la
+ * respuesta nueva, de modo que la recarga posterior ya encuentra el código actual.
+ * La lista sale de lo que el navegador cargó de verdad, para que no haya que
+ * mantenerla al añadir módulos. */
+async function recargarSinCache(){
+  const urls = performance.getEntriesByType('resource')
+    .map(e => e.name)
+    .filter(u => u.startsWith(location.origin) && /\.(js|mjs|css)(\?|$)/.test(u));
+  // si alguna falla (sin red), se recarga igual: nunca peor que antes
+  await Promise.all(urls.map(u => fetch(u, { cache: 'reload' }).catch(() => {})));
+  location.reload();
+}
+
 /* Aviso de versión caducada.
  *
  * GitHub Pages sirve el HTML con `Cache-Control: max-age=600`, así que después de
@@ -49,7 +72,12 @@ fetch('package.json?cb=' + Date.now(), { cache: 'no-store' })
     elVersion.classList.add('caducada');
     elVersion.textContent = `v${APP_VERSION} → v${p.version} disponible`;
     elVersion.title = 'Estás viendo una copia en caché. Pulsa para recargar.';
-    elVersion.addEventListener('click', () => location.reload());
+    elVersion.addEventListener('click', () => {
+      // refrescar los módulos lleva un instante: que se note que hace algo
+      elVersion.textContent = 'actualizando…';
+      elVersion.classList.remove('caducada');
+      recargarSinCache();
+    }, { once: true });
   })
   .catch(() => {});   // sin conexión o servido desde file://: no es motivo de fallo
 
