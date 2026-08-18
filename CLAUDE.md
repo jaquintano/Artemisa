@@ -4,40 +4,32 @@ Instrucciones permanentes para trabajar en este repositorio.
 
 ## Qué es
 
-Simulador de estrategia por turnos ambientado en la Luna. Tres facciones compiten
-por el control territorial de un mapa hexagonal. Interfaz web, **JavaScript puro
-con ES modules, sin dependencias de runtime ni build step**.
+Simulador de estrategia por turnos ambientado en la Luna: 3 o 4 facciones
+compiten por el control territorial de un mapa hexagonal. Interfaz web,
+**JavaScript puro con ES modules, sin dependencias de runtime ni build step**.
 
 ## Restricciones innegociables
 
-1. **Cero dependencias de runtime.** Nada de React, D3, Phaser ni CDNs. El juego
-   debe seguir funcionando sirviendo la carpeta con un servidor estático. Las
-   dependencias de *desarrollo* (test runner, linter) sí son aceptables.
-2. **Sin build step.** Nada de bundlers ni transpiladores. El navegador carga
-   `src/main.js` como módulo directamente.
-3. **Todo el texto de la interfaz en español**, incluidos los mensajes del
-   registro de misión y el tutorial.
-4. **Gráficos generados por código y 100 % vectoriales.** Terreno, unidades y
-   recursos son SVG calculado en tiempo de ejecución: nada de ficheros de imagen
-   ni sprites externos. Todo se dibuja una sola vez y lo reescala el navegador,
-   nítido a cualquier zoom (`terrain-icons.js`, `unit-icon.js`,
-   `resource-icons.js`). Hubo una etapa en que el terreno era pixel art que se
-   regeneraba a más resolución al acercar el zoom; se retiró por decisión del
-   mantenedor y con él toda su maquinaria (`pixelart.js`, `PIXEL_BASE`,
-   `ICON_N_*`, `setIconResolution()`). No lo reintroduzcas.
-   Los iconos que se repiten por el mapa se emiten como `<defs>` + `<use>`, no
-   inline: duplicar sus trazados en decenas de sectores infla el DOM sin
-   necesidad. Por eso la ficha de guarnición precalcula una variante por facción
-   en vez de recibir el color por parámetro en cada llamada.
-5. **El relieve del terreno no lleva color propio.** `terrain-icons.js` dibuja
-   solo blancos y negros semitransparentes, de modo que el tono lo aporta siempre
-   el relleno de debajo: el color del terreno si el sector es neutral y el de la
-   facción si tiene dueño. Gracias a eso basta un juego de baldosas para los dos
-   casos. Si metes un color fijo ahí, los sectores conquistados dejarán de verse
-   coherentes.
-6. **La lógica de dominio no toca el DOM.** `config`, `state`, `combat`,
-   `economy`, `ai` y `victory` deben poder ejecutarse en Node sin navegador.
-   Cualquier necesidad de repintar se canaliza por `src/render/bus.js`.
+1. **Cero dependencias de runtime.** Nada de React, D3, Phaser ni CDNs; el juego
+   funciona sirviendo la carpeta con un servidor estático. Dependencias de
+   *desarrollo* (test runner) sí valen.
+2. **Sin build step.** El navegador carga `src/main.js` como módulo directamente.
+3. **Todo el texto de cara al usuario en español**, incluidos registro de misión y
+   tutorial.
+4. **Gráficos por código y 100 % vectoriales.** Terreno, unidades y recursos son
+   SVG calculado en tiempo de ejecución (`terrain-icons.js`, `unit-icon.js`,
+   `resource-icons.js`): nada de imágenes ni sprites. Los iconos que se repiten
+   por el mapa se emiten como `<defs>` + `<use>`, no inline, para no inflar el DOM;
+   por eso la ficha de guarnición precalcula una variante por facción.
+5. **El relieve del terreno no lleva color propio.** `terrain-icons.js` dibuja solo
+   blancos y negros semitransparentes; el tono lo pone el relleno de debajo (color
+   del terreno si es neutral, de la facción si tiene dueño). Un color fijo ahí
+   rompería los sectores conquistados.
+6. **La lógica de dominio no toca el DOM.** `config`, `state`, `mapgen`, `combat`,
+   `economy`, `ai`, `victory`, `hopper` corren en Node sin navegador. Todo
+   repintado se canaliza por `render/bus.js`. La simulación de balance es el
+   contrato de esta regla: si alguien mete una dependencia del DOM en la lógica,
+   deja de ejecutarse.
 
 ## Arquitectura
 
@@ -48,10 +40,11 @@ src/
   config.js         constantes de dominio y parámetros de balance
   mapgen.js         generación del tablero por reglas (bases, terreno, neutrales)
   state.js          estado de partida y consultas sobre la rejilla hexagonal
-  combat.js         apoyo entre sectores, fuerzas de ataque/defensa, resolución
-  economy.js        producción, tope de población, construcción, reclutamiento
+  combat.js         apoyo, fuerzas de ataque/defensa, resolución
+  economy.js        producción, mantenimiento, tope de población, construcción
+  hopper.js         Transportador: fabricación y reglas de salto
   ai.js             turno de las rivales: ataque, concentración, construcción…
-  victory.js        eliminación y condiciones de victoria
+  victory.js        eliminación, dominancia y victoria técnica por puntos
   game.js           órdenes de movimiento, cierre de turno, arranque
   main.js           único módulo que cablea lógica y presentación
   render/
@@ -60,7 +53,7 @@ src/
     terrain-icons.js   relieve vectorial de las cuatro baldosas de terreno
     resource-icons.js  iconos vectoriales de regolito, helio-3 y hielo
     unit-icon.js    ficha de guarnición, teñida con el color de cada facción
-    map.js          render del mapa, zoom y scroll
+    map.js          render del mapa, zoom, scroll y fronteras de territorio
     ui.js           paneles, registro de misión, leyenda
 tests/
   check-imports.mjs verificación estática del grafo de módulos
@@ -71,244 +64,134 @@ tools/
   version.mjs       consulta, incrementa y comprueba el número de versión
 ```
 
-### Número de versión
-
-La fuente de verdad es `APP_VERSION` en `src/config.js`, porque es lo que el
-navegador puede importar sin pedir un fichero extra; `package.json` se mantiene
-sincronizado desde `tools/version.mjs`. **No edites la versión a mano en los dos
-sitios**: usa el script y no podrán divergir. `npm test` ejecuta
-`version.mjs check`, que falla si alguien lo hace igualmente.
-
-El incremento es automático: `.claude/auto-deploy.sh` llama a `version.mjs bump`
-antes de cada publicación y lo pliega en el commit de cabeza con `--amend`, así
-que cada cambio que llega a GitHub lleva su propia versión sin ensuciar el
-historial con commits de sólo-versión. Es seguro porque ese commit todavía no
-está en el remoto. La versión se muestra junto al título en la cabecera.
-
-**Ojo con la caché al verificar un despliegue.** GitHub Pages sirve el HTML con
-`Cache-Control: max-age=600`: durante diez minutos el navegador puede seguir
-enseñando la copia anterior aunque el push haya ido bien. Ya ha hecho pensar dos
-veces que el despliegue había fallado. Para comprobar qué hay publicado de verdad,
-pide el fichero saltándote la caché (`curl` o `fetch` con `cache:'no-store'`) en
-vez de mirar la pestaña abierta. `main.js` compara al arrancar su `APP_VERSION`
-con la de `package.json` y, si no coinciden, el distintivo de la cabecera avisa y
-al pulsarlo recarga; deliberadamente **no** recarga solo, porque hacerlo a media
-partida sería peor que el problema que resuelve.
-
 ### Regla de dependencias
 
-El flujo es **presentación → lógica**, nunca al revés. Si un módulo de lógica
-necesita repintar, llama a `requestRender()` de `render/bus.js`; `main.js` es
-quien registra el renderizador real. **No introduzcas imports de `render/` en
-módulos de lógica**: rompe la ejecución headless y crea ciclos.
+Flujo **presentación → lógica**, nunca al revés. Si un módulo de lógica necesita
+repintar, llama a `requestRender()` de `render/bus.js`; `main.js` registra el
+renderizador real. **No importes `render/` desde módulos de lógica**: rompe la
+ejecución headless y crea ciclos.
 
 ### Estado compartido
 
-`state` se exporta desde `state.js` como binding vivo (`export let`). Los módulos
-que lo importan lo leen actualizado, pero **no pueden reasignarlo**: para
-sustituir la partida entera hay que llamar a `setState()`.
+`state` se exporta desde `state.js` como binding vivo (`export let`): los módulos
+lo leen actualizado pero **no pueden reasignarlo**. Para sustituir la partida
+entera, `setState()`.
 
-## Cómo ejecutarlo
+### Número de versión
 
-Los ES modules no funcionan con `file://` por la política CORS. Hace falta un
-servidor estático; el del repo solo usa módulos internos de Node:
+Fuente de verdad: `APP_VERSION` en `src/config.js` (el navegador la importa sin
+petición extra). `tools/version.mjs` la copia a `package.json`; **no la edites a
+mano en dos sitios**. `.claude/auto-deploy.sh` la incrementa (`bump`) antes de
+cada publicación y lo pliega en el commit de cabeza con `--amend`. `npm test`
+ejecuta `version.mjs check`, que falla si divergen.
+
+**Ojo con la caché al verificar un despliegue.** GitHub Pages sirve el HTML con
+`max-age=600`: hasta diez minutos el navegador puede seguir mostrando la copia
+anterior aunque el push fuera bien. Para saber qué hay publicado, pide el fichero
+con `cache:'no-store'` (o `curl`), no mires la pestaña. `main.js` compara al
+arrancar su versión con la de `package.json` y avisa en la cabecera si difieren.
+
+## Cómo ejecutarlo y comprobarlo
+
+Los ES modules no cargan desde `file://` (CORS); hace falta servir la carpeta:
 
 ```bash
-npm start     # node tools/serve.mjs 8000, y abrir http://localhost:8000
+npm start                        # sirve en http://localhost:8000
+node tests/check-imports.mjs     # grafo de módulos sin referencias rotas
+node tests/balance-sim.mjs 200   # la lógica corre sin DOM; mide el balance
+node tests/mapgen-test.mjs 200   # reglas de generación sobre cientos de mapas
 ```
-
-## Comprobaciones antes de dar por buena una tarea
-
-```bash
-node tests/check-imports.mjs     # no debe haber referencias rotas
-node tests/balance-sim.mjs 200   # la lógica debe correr sin DOM
-```
-
-La simulación de balance es además el **contrato de la regla 6**: si alguien
-introduce una dependencia del DOM en la capa de lógica, deja de ejecutarse.
 
 ## Reglas de juego (invariantes a preservar)
 
-- **Movimiento**: cada guarnición se desplaza como máximo **1 sector por ronda**.
-  Se controla con `hex.movedUnits`; `availableUnits(hex)` es la única vía
-  legítima para saber cuántas tropas pueden recibir órdenes.
-- **Reclutamiento localizado**: las guarniciones solo se entrenan en edificios
-  marcados con `trains:true` en `BUILDING_TYPES` — hoy la Base Principal y el
-  Cuartel Lunar. `canTrainAt(hex)` es la única vía legítima para comprobarlo: no
-  compares contra los nombres de tipo a mano. Combinado con el movimiento de 1
-  sector por ronda, esto convierte la colocación de cuarteles en la decisión que
-  fija el frente, y deja sin refuerzos a quien pierda todos sus puntos de recluta.
-- **Costes en tres recursos**: `cost` siempre declara `regolith`, `helium3` e
-  `ice`. Usa `canAfford()` / `payCost()` de `economy.js` en lugar de restar
-  recursos a mano; el Cuartel Lunar fue el primero en gastar hielo y varios sitios
-  daban por hecho que solo existían dos monedas.
-- **Un solo nombre para el tercer recurso: «hielo»** (`ice` en código). Antes
-  convivían `water`/«agua» con el terreno «Casquete de Hielo» y el «Fusor de
-  Hielo», y nadie entendía si eran uno o dos recursos. No reintroduzcas «agua».
-- **La producción se calcula en un único sitio**: `projectedIncome(faction)`.
-  `produceResources()` la cobra y la barra superior la anuncia con el `(+N)`. Si
-  añades un bonus, hazlo ahí dentro o el jugador verá una previsión que no se
-  cumple.
-- **Apoyo**: un sector aliado refuerza a un combatiente si linda *a la vez* con
-  el combatiente y con el sector en disputa. Simétrico para ataque y defensa. En
-  una rejilla hexagonal dos casillas adyacentes comparten **siempre exactamente
-  2 vecinos**, así que cada bando recibe como máximo 2 apoyos, y son las mismas
-  dos casillas para ambos: controlarlas es el objetivo táctico real del frente.
-  Las tropas de apoyo no se desplazan ni sufren bajas.
-- **Tope de población**: `4 + producción de hielo por turno + sectores
-  controlados`, en `popCap()` de `economy.js`. Depende del *flujo* de hielo y no
-  del montón acumulado, a propósito: acaparar no sirve, hay que sostener la
-  producción. Y como cada sector suma, expandirse es lo que financia el ejército
-  con el que sigues expandiéndote. Vive en `economy.js` y no en `state.js` porque
-  necesita `projectedIncome()`; traerlo al estado crearía un ciclo de imports.
-  Una facción puede quedar **por encima** del tope al perder terreno o casquetes:
-  eso solo le impide reclutar, nunca destruye tropas ya existentes. Cuando pasa,
-  el contador de la barra superior se pinta en rojo (`.res.pop.excedido`). Las
-  guarniciones iniciales son 5 justamente para cuadrar con el tope de arranque
-  (4 + 0 de hielo + 1 sector): se empieza al completo, no por encima.
-- **Blindaje Reforzado en defensa**: solo cuenta si el sector atacado **tiene
-  guarnición**. El blindaje lo llevan puestas las tropas, así que un sector vacío
-  no se beneficia por mucho que su facción tenga la tecnología. En ataque no
-  aplica la restricción: ahí siempre hay tropas enviadas.
-- **Combate**: gana quien tenga más fuerza; el desglose completo debe seguir
-  apareciendo en el registro de misión y en la vista previa. No sustituyas el
-  modelo determinista por tiradas aleatorias sin pedirlo explícitamente.
+- **`PLAYER_COUNT` (3 o 4) manda sobre el tamaño**: 3 → lado 5 y 61 losetas; 4 →
+  lado 6 y 91. El radio no es constante: viaja en `state.radius`. Las facciones
+  son las `PLAYER_COUNT` primeras de `FACTION_DEFS`, y los recursos iniciales
+  salen de `STARTING`.
 - **El tablero se genera por reglas, no al azar** (`mapgen.js`). Todo arranca
-  siendo Mare; encima se tallan una *zona de expansión* por jugador (radio 2 desde
-  su base, con exactamente 2 Tierras Altas, 2 Cráter y 2 Parajes Helados) y una
-  *tierra de nadie* central con 1 o 3 de cada tipo según haya 3 o 4 jugadores.
-  Esas especiales del centro **no se esparcen**: forman un racimo pegado a la
-  loseta central, de modo que el centro es un premio concreto y no un reparto
-  difuso. A cara o cruz se incluye la casilla central o se deja fuera; con 3
-  jugadores eso da exactamente «el centro y dos adyacentes» o «tres adyacentes». La intención es que **ningún jugador salga
-  favorecido por el sorteo**: si tocas el reparto, mantén esa simetría.
-  `generarMapa()` se autovalida y revienta si los conteos no cuadran, en vez de
-  devolver un tablero injusto en silencio; `tests/mapgen-test.mjs` lo comprueba
-  además sobre cientos de mapas y verifica la geometría.
-- **Las bases van equidistantes en el perímetro.** No basta con repartir por
-  índice de anillo: con 4 jugadores el perímetro mide 30 y 30/4 no es entero, de
-  modo que ese reparto da 8,6,8,6. `repartirBases()` busca entre las combinaciones
-  y sí encuentra la perfecta. Resultado: 3 jugadores forman un triángulo con las
-  tres parejas a 8; 4 jugadores, un cuadrado con las contiguas a 7 y las diagonales
-  a 10. **Busca, no supongas**, si cambias el número de jugadores.
-- **`PLAYER_COUNT` (3 o 4) manda sobre el tamaño**: 3 → lado 5 y 61 losetas;
-  4 → lado 6 y 91. El radio dejó de ser constante y viaja en `state.radius`; las
-  facciones son las `PLAYER_COUNT` primeras de `FACTION_DEFS`.
-- **Mantenimiento y apagados**: cada instalación con `upkeep` se cobra al cerrar
-  el turno, **antes** de producir. Lo que no se pueda pagar queda con
-  `hex.disabled = true` y deja de producir, de defender y de habilitar funciones;
-  no se destruye y se reactiva sola al haber recursos. **Consulta siempre
-  `edificioActivo(hex)`, nunca `hex.building` a secas**: cada sitio que se olvide
-  de hacerlo regala un bono que no está pagado. El orden de pago es fijo (base,
-  cuarteles, laboratorio, torretas) para que una facción arruinada conserve antes
-  la capacidad de rehacerse que sus defensas.
-- **El Laboratorio es la llave de la ciencia**: `unique:true` (uno por facción) y
-  `enables:['research','hoppers']`. Sin uno activo no se investiga nada ni se
-  fabrican transportes. Usa `habilitado(faction,'research')` y `puedeInvestigar()`
-  en vez de mirar las tecnologías a mano.
-- **Los bonos tecnológicos se acumulan**: `bonoTecnologico()` suma los `bono` de
-  todas las tecnologías investigadas, así que Perforación I + II dan +4 sobre la
-  Mina (3+2+2 = 7). Si añades un nivel III, basta con declararlo en `TECHS`.
+  siendo Mare; se tallan una *zona de expansión* por jugador (radio 2 desde su
+  base, con 2 de cada terreno especial) y una *tierra de nadie* central cuyas
+  especiales forman un **racimo pegado a la loseta central** (con 3 jugadores:
+  «centro + 2 adyacentes» o «3 adyacentes»). La intención es que **nadie salga
+  favorecido por el sorteo**: mantén la simetría si tocas el reparto.
+  `generarMapa()` se autovalida y revienta si los conteos no cuadran.
+- **Bases equidistantes en el perímetro.** Repartir por índice de anillo NO vale
+  para 4 jugadores (perímetro 30, no divisible): `repartirBases()` busca la
+  disposición perfecta. Resultado: 3 → triángulo (parejas a 8); 4 → cuadrado
+  (contiguas a 7, diagonales a 10). **Busca, no supongas.**
+- **Movimiento**: cada guarnición se mueve máximo **1 sector por ronda**, vía
+  `hex.movedUnits`; `availableUnits(hex)` es la única forma legítima de saber
+  cuántas tropas pueden recibir órdenes.
+- **Reclutamiento localizado**: solo en edificios con `trains:true` (Base y
+  Cuartel Lunar). Comprueba con `canTrainAt(hex)`, no contra nombres de tipo a
+  mano. Junto al movimiento de 1/ronda, esto hace de la colocación de cuarteles la
+  decisión que fija el frente.
+- **Costes y recursos en tres monedas** (`regolith`, `helium3`, `ice`, llamada
+  siempre «hielo» — nunca reintroduzcas «agua»). Usa `canAfford()` / `payCost()`,
+  no restes a mano.
+- **La producción se calcula en un solo sitio**: `projectedIncome(faction)`.
+  `produceResources()` la cobra y la barra la anuncia con el `(+N)`. Si añades un
+  bono, hazlo ahí o la previsión mentirá.
+- **Mantenimiento y apagados**: cada instalación con `upkeep` se cobra al cerrar el
+  turno, **antes** de producir. Lo impagado queda `hex.disabled = true` y deja de
+  producir, defender y habilitar; no se destruye y se reactiva sola al haber
+  recursos. **Consulta siempre `edificioActivo(hex)`, nunca `hex.building` a
+  secas** — cada olvido regala un bono sin pagar. Orden de pago fijo (base,
+  cuarteles, laboratorio, torretas): una facción arruinada conserva antes su
+  capacidad de rehacerse que sus defensas.
+- **Laboratorio: llave de la ciencia.** `unique:true` (uno por facción) y
+  `enables:['research','hoppers']`. Sin uno activo no hay investigación ni
+  transportes. Usa `habilitado(faction,'research')` y `puedeInvestigar()`.
+- **Los bonos tecnológicos se acumulan** vía `bonoTecnologico()`: Perforación I+II
+  dan +4 sobre la Mina (3+2+2 = 7). Un nivel III se declara solo en `TECHS`.
+- **Tope de población** = `4 + producción de hielo por turno + sectores`, en
+  `popCap()` (vive en `economy.js` porque necesita `projectedIncome()`; en
+  `state.js` crearía un ciclo). Depende del *flujo* de hielo, no del acumulado:
+  expandirse financia el ejército con el que sigues expandiéndote. Una facción
+  puede quedar **por encima** del tope al perder terreno; eso solo impide reclutar
+  (contador en rojo, `.res.pop.excedido`), no destruye tropas.
+- **Apoyo**: un sector aliado refuerza a un combatiente si linda *a la vez* con él
+  y con el sector en disputa. En rejilla hexagonal dos casillas adyacentes
+  comparten **exactamente 2 vecinos**, así que cada bando recibe máximo 2 apoyos, y
+  son las mismas dos para ambos. Las tropas de apoyo no se mueven ni sufren bajas.
+- **Blindaje Reforzado** solo cuenta en defensa si el sector **tiene guarnición**
+  (el blindaje lo llevan las tropas). En ataque no aplica la restricción.
+- **Combate determinista**: gana quien tenga más fuerza; el desglose completo
+  aparece en el registro y en la vista previa. No lo sustituyas por tiradas
+  aleatorias sin pedirlo.
 - **El Transportador va aparte de `hex.units`** (`hex.hoppers`). Esa cifra es la
-  infantería y la usan combate, apoyo y tope de población: meter ahí los hoppers
-  obligaría a descontarlos en todos esos sitios, con un fallo latente en cada
-  olvido. El hopper no tiene fuerza de combate. Regla del aire: una Torreta rival
-  **activa** impide aterrizar y sobrevolar (`torretaEnemigaActiva`), pero el
-  destino no admite torreta rival ni aunque esté apagada.
-- **Victoria técnica por puntos**: si se agotan las rondas decide `score()` de
-  `victory.js`, no el territorio a secas. Puntúan sectores, instalaciones en pie,
-  bajas rivales confirmadas (`faction.kills`, que lleva `resolveCombat`) y haber
-  investigado el Relé Orbital; los pesos están en `SCORE` de `config.js`. Las
-  guarniciones neutrales **no** cuentan como bajas: no pertenecen a ninguna
-  facción.
-- **La propiedad del terreno se marca con el perímetro, no con el relleno.** Cada
-  loseta conserva el color de su terreno y `map.js` traza en el color de la
-  facción los lados que dan a alguien distinto. La unión de esos lados es
-  exactamente el contorno del territorio contiguo, así que no hace falta calcular
-  componentes conexas: un sector aislado dibuja sus seis lados y uno interior,
-  ninguno. Los bordes se acumulan aparte y se pintan al final, por encima de todos
-  los hexágonos; dentro de cada `<g>` los taparía el vecino dibujado después.
+  infantería y la usan combate, apoyo y tope de población; meter hoppers ahí
+  obligaría a descontarlos en todos esos sitios. El hopper no tiene fuerza de
+  combate: salta hasta 2 casillas con hasta 4 tropas. Una Torreta rival **activa**
+  niega aterrizar y sobrevolar (`torretaEnemigaActiva`); el destino no admite
+  torreta rival ni aunque esté apagada.
+- **Victoria técnica por puntos**: al agotarse las rondas decide `score()`, no el
+  territorio a secas. Puntúan sectores, instalaciones en pie, bajas rivales
+  (`faction.kills`, que lleva `resolveCombat` — las neutrales no cuentan) y el Relé
+  Orbital. Pesos en `SCORE` de `config.js`.
+- **La propiedad se marca con el perímetro, no con el relleno.** Cada loseta
+  conserva el color de su terreno; `map.js` traza en el color de la facción los
+  lados que dan a alguien distinto. La unión de esos lados es el contorno del
+  territorio contiguo (sin calcular componentes conexas). Los bordes se pintan al
+  final, por encima de todos los hexágonos, o el vecino los taparía.
 
-## Balance: histórico de una investigación larga
+## Balance
 
-Estado actual, medido con `node tests/balance-sim.mjs 200`: **el 85,5 % de las
-partidas se resuelven por dominancia**, en 64,3 rondas de media sobre 80, con el
-líder controlando el 59 % del mapa. La incidencia que arrastraba este documento
-—*el 100 % de las partidas agotaban el límite de rondas*— está **cerrada**.
+Medido con `node tests/balance-sim.mjs 200`: **~75 % de las partidas se resuelven
+por conquista** antes de las 80 rondas, con el líder sobre el 57 % del mapa.
 
-### Qué la causaba
-
-**La IA dispersaba las tropas de una en una y nunca las concentraba.** Medido en
-su momento: el 72,4 % de sus sectores con frontera no tenían tropas que enviar
-(guarnecían 1 unidad y `aiTakeTurn()` envía `availableUnits-1`), el 58,8 % de
-todos los sectores tenían exactamente 1 unidad, y a los frentes bloqueados les
-faltaban solo **0,6 puntos de fuerza**. No les faltaba ejército: les faltaba
-juntarlo.
-
-Se arregló con `concentrarTropas()` en `ai.js` y subiendo `MAX_TURNS` de 60 a 80:
-
-| | antes | con concentración | y con 80 rondas |
-|---|---|---|---|
-| partidas resueltas | 0 % | 40 % | **85,5 %** |
-| territorio del líder | 14,2 % | 52,2 % | **59,0 %** |
-
-### Callejones sin salida (no repitas estas pruebas)
-
-Todo esto se midió y **no era la causa**. Dos de ellos llegaron a estar
-recomendados en versiones anteriores de este mismo documento:
-
-- **El apoyo.** `SUPPORT_FACTOR` a 0 / 0.25 / 0.5 / 1: ninguna partida se resolvía
-  en ningún caso.
-- **Los recursos.** El líder terminaba con ~750 de regolito sin gastar.
-- **El tope de población.** Barrido de la base de `popCap()` de 4 a 30, 200
-  partidas por valor: las resueltas seguían en 0 % y el líder solo pasaba de 8,5 a
-  10,8 sectores. Con la base en 30 las facciones ni siquiera llenaban el tope
-  (presión 83 %), lo que demostraba que no era el techo lo que las frenaba.
-- **La cadencia de reclutamiento.** Con la IA reclutando 1 unidad por cada punto
-  de recluta en vez de 1 por turno: 8,7 sectores frente a 8,5.
-- **Encoger el mapa.** Ayuda en proporción pero no resuelve: entre `RADIUS` 7, 5 y
-  4 el líder se quedó clavado en 9-11 sectores absolutos, y lo que subía era el
-  porcentaje porque bajaba el denominador.
-
-La lección: **la presión del tope al 98 % era un espejismo.** El ejército estaba
-pegado al techo porque no llegaba a gastarse en combate, no porque faltara techo.
-Un indicador saturado no prueba que ese indicador sea el cuello de botella.
-
-### Barrido del tope de población, ya con la concentración activa
-
-| base de `popCap()` | resueltas | líder | presión del tope |
-|------|-----------|-------|------------------|
-|  **4** (actual) | 42,5 % | 52,2 % | **57 %** |
-|  6   | 36,5 % | 52,7 % | 42 % |
-|  8   | 39,0 % | 52,9 % | 38 % |
-| 10   | 42,5 % | 54,2 % | 35 % |
-| 12   | 32,0 % | 52,4 % | 33 % |
-| 16   | 38,5 % | 52,4 % | 30 % |
-
-Ningún valor mejora la resolución —las diferencias son ruido a 200 partidas— y
-subir la base solo desploma la presión. **Se deja en 4**, que es la que conserva
-la tensión que la regla persigue; subirla devuelve el tope al papel decorativo.
-
-### Barrido de `MAX_TURNS`, con la concentración activa
-
-| rondas | resueltas | ronda media |
-|--------|-----------|-------------|
-| 60 | 40,0 % | 57,3 |
-| 70 | 70,5 % | 62,0 |
-| **80** (actual) | **84-85 %** | 64,3 |
-| 90 | 89,5 % | 65,5 |
-| 100 | 96,0 % | 66,2 |
-
-Las partidas piden unas 65 rondas para decidirse, así que 60 las cortaba justo
-antes del desenlace. A partir de 90 la curva se aplana y solo alarga la partida.
-
-**Conviene medir cada cambio con la simulación** en vez de ajustar a ojo.
+La única palanca que de verdad movió esto fue `concentrarTropas()` en `ai.js`: sin
+ella la IA repartía las tropas de una en una y no rompía ningún frente (0 %
+resueltas). **Ya se midieron y descartaron** como causa del estancamiento el apoyo
+(`SUPPORT_FACTOR`), los recursos, el tope de población (barrido de 4 a 30 sin
+efecto) y la cadencia de reclutamiento; no repitas esas pruebas. `MAX_TURNS` está
+en 80 porque las partidas piden ~65 rondas para decidirse. **Mide cada cambio de
+balance con la simulación**, no a ojo.
 
 ## Estilo de código
 
 - Español en comentarios y en todo el texto de cara al usuario.
-- Comentarios que expliquen el *porqué* (decisiones de diseño, trampas
-  conocidas), no el *qué*.
-- Sin punto y coma opcional omitido; comillas simples en JS.
-- Nombres de dominio en español (`guarnición`, `sector`) en el texto visible;
-  identificadores de código en inglés o español, pero coherentes con el módulo.
+- Comentarios que expliquen el *porqué* (decisiones, trampas), no el *qué*.
+- Comillas simples en JS; sin punto y coma opcional omitido.
+- Nombres de dominio en español en el texto visible (`guarnición`, `sector`);
+  identificadores de código coherentes con su módulo.

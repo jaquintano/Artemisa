@@ -1,6 +1,6 @@
 # Artemisa
 
-Simulador de estrategia por turnos sobre la superficie lunar. Tres facciones
+Simulador de estrategia por turnos sobre la superficie lunar. 3 o 4 facciones
 compiten por el control territorial de un mapa hexagonal generado por reglas:
 61 losetas (lado 5) a 3 jugadores, 91 (lado 6) a 4.
 
@@ -42,14 +42,19 @@ node tests/balance-sim.mjs 200   # simulación IA vs IA, sin navegador
   tiempo de ejecución: sin ficheros de imagen y nítido a cualquier zoom.
 - **Movimiento de 1 sector por ronda** por guarnición.
 - **Reclutamiento localizado**: las guarniciones solo se entrenan en la Base
-  Principal y en los Cuarteles Lunares (20 regolito / 10 helio-3 / 5 hielo,
+  Principal y en los Cuarteles Lunares (20 regolito / 5 helio-3 / 2 hielo,
   +1 de defensa), construibles en cualquier sector propio libre.
+- **Instalaciones con mantenimiento**: laboratorio, torretas, base y cuarteles
+  cuestan recursos por turno; lo que no se paga se desactiva hasta poder pagarlo.
+- **Árbol tecnológico** habilitado por el Laboratorio (uno por facción), con
+  niveles cuyos bonos se acumulan.
+- **Transportador (Hopper)**: unidad de apoyo sin fuerza de combate que salta
+  tropas por el mapa; una torreta rival activa le niega el aire.
 - **Apoyo de flanco**: un sector aliado refuerza el combate si linda a la vez con
   el combatiente y con el sector en disputa.
 - **Combate determinista** con desglose completo de cada modificador. El bonus de
   *Blindaje Reforzado* solo cuenta en defensa si el sector tiene guarnición.
-- **Victoria** por eliminación, por dominancia (60 % del mapa) o por puntos al
-  agotarse las 80 rondas.
+- **Victoria** por eliminación, por dominancia (60 % del mapa) o técnica por
+  puntos al agotarse las 80 rondas.
 
-Ver `CLAUDE.md` para la arquitectura, las restricciones del proyecto y las
-incidencias abiertas.
+Ver `CLAUDE.md` para la arquitectura y las restricciones del proyecto.
