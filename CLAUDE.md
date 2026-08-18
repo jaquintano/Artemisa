@@ -194,6 +194,27 @@ introduce una dependencia del DOM en la capa de lógica, deja de ejecutarse.
 - **`PLAYER_COUNT` (3 o 4) manda sobre el tamaño**: 3 → lado 5 y 61 losetas;
   4 → lado 6 y 91. El radio dejó de ser constante y viaja en `state.radius`; las
   facciones son las `PLAYER_COUNT` primeras de `FACTION_DEFS`.
+- **Mantenimiento y apagados**: cada instalación con `upkeep` se cobra al cerrar
+  el turno, **antes** de producir. Lo que no se pueda pagar queda con
+  `hex.disabled = true` y deja de producir, de defender y de habilitar funciones;
+  no se destruye y se reactiva sola al haber recursos. **Consulta siempre
+  `edificioActivo(hex)`, nunca `hex.building` a secas**: cada sitio que se olvide
+  de hacerlo regala un bono que no está pagado. El orden de pago es fijo (base,
+  cuarteles, laboratorio, torretas) para que una facción arruinada conserve antes
+  la capacidad de rehacerse que sus defensas.
+- **El Laboratorio es la llave de la ciencia**: `unique:true` (uno por facción) y
+  `enables:['research','hoppers']`. Sin uno activo no se investiga nada ni se
+  fabrican transportes. Usa `habilitado(faction,'research')` y `puedeInvestigar()`
+  en vez de mirar las tecnologías a mano.
+- **Los bonos tecnológicos se acumulan**: `bonoTecnologico()` suma los `bono` de
+  todas las tecnologías investigadas, así que Perforación I + II dan +4 sobre la
+  Mina (3+2+2 = 7). Si añades un nivel III, basta con declararlo en `TECHS`.
+- **El Transportador va aparte de `hex.units`** (`hex.hoppers`). Esa cifra es la
+  infantería y la usan combate, apoyo y tope de población: meter ahí los hoppers
+  obligaría a descontarlos en todos esos sitios, con un fallo latente en cada
+  olvido. El hopper no tiene fuerza de combate. Regla del aire: una Torreta rival
+  **activa** impide aterrizar y sobrevolar (`torretaEnemigaActiva`), pero el
+  destino no admite torreta rival ni aunque esté apagada.
 - **Victoria técnica por puntos**: si se agotan las rondas decide `score()` de
   `victory.js`, no el territorio a secas. Puntúan sectores, instalaciones en pie,
   bajas rivales confirmadas (`faction.kills`, que lleva `resolveCombat`) y haber

@@ -1,6 +1,6 @@
 /* Estado de la partida y consultas sobre la rejilla hexagonal. Sin DOM.
    El tablero lo construye src/mapgen.js; aquí solo se consulta y se muta. */
-import { DIRS, PLAYER_COUNT } from './config.js';
+import { DIRS, PLAYER_COUNT, STARTING } from './config.js';
 import { generarMapa, faccionesDe, hexKey as claveHex } from './mapgen.js';
 
 /* Binding vivo: los módulos que lo importan ven las reasignaciones hechas aquí.
@@ -16,7 +16,7 @@ export function newState(jugadores = PLAYER_COUNT){
 
   const factions = faccionesDe(jugadores).map(f=>({
     id:f.id, name:f.name, color:f.color, dim:f.dim, isPlayer:f.isPlayer, alive:true,
-    resources:{ regolith:60, helium3:25, ice:20 },
+    resources:{ ...STARTING[jugadores].resources },
     techs:new Set(),
     kills:0,   // unidades rivales destruidas; puntúa para la victoria técnica
   }));

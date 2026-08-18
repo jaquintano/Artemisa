@@ -37,6 +37,49 @@ const RESERVED = new Set([
   'finally', 'throw', 'switch', 'case', 'yield', 'async', 'await', 'static', 'get', 'set',
 ]);
 
+/* Deja solo el código ejecutable: vacía comentarios, cadenas y el texto de las
+   plantillas, conservando lo que va dentro de `${...}` porque eso sí es código.
+ *
+ * Se hace recorriendo el fichero carácter a carácter y no con expresiones
+ * regulares porque las plantillas se anidan: `${a ? `x` : `y`}` es corriente en
+ * este proyecto, y un patrón plano cierra donde no debe y deja prosa suelta. Con
+ * prosa española dentro, una frase como «las tropas indicadas (máx. 4)» pasaba
+ * por una llamada a `indicadas()` y el verificador daba un falso positivo. */
+function limpiarCuerpo(src){
+  let out = '';
+  let modo = 'code';
+  const pila = [];   // profundidad de llaves de cada ${...} abierto
+  for(let i=0; i<src.length; i++){
+    const c = src[i], d = src[i+1];
+    if(modo === 'code'){
+      if(c === '/' && d === '*'){ const f = src.indexOf('*/', i+2); i = f<0 ? src.length : f+1; out += ' '; continue; }
+      if(c === '/' && d === '/'){ const f = src.indexOf('\n', i); i = f<0 ? src.length : f-1; out += ' '; continue; }
+      if(c === "'"){ modo = 'sq'; out += ' '; continue; }
+      if(c === '"'){ modo = 'dq'; out += ' '; continue; }
+      if(c === '`'){ modo = 'tpl'; out += ' '; continue; }
+      if(pila.length){
+        if(c === '{') pila[pila.length-1]++;
+        else if(c === '}'){
+          if(pila[pila.length-1] === 0){ pila.pop(); modo = 'tpl'; out += ' '; continue; }
+          pila[pila.length-1]--;
+        }
+      }
+      out += c; continue;
+    }
+    if(modo === 'sq' || modo === 'dq'){
+      if(c === '\\'){ i++; out += '  '; continue; }
+      if((modo === 'sq' && c === "'") || (modo === 'dq' && c === '"')) modo = 'code';
+      out += ' '; continue;
+    }
+    // dentro de una plantilla
+    if(c === '\\'){ i++; out += '  '; continue; }
+    if(c === '`'){ modo = 'code'; out += ' '; continue; }
+    if(c === '$' && d === '{'){ pila.push(0); modo = 'code'; i++; out += '  '; continue; }
+    out += ' ';
+  }
+  return out;
+}
+
 /* Parte una lista de declaradores por las comas de nivel superior, ignorando las
    que estén dentro de paréntesis, corchetes o llaves. */
 function dividirDeclaradores(texto) {
@@ -149,17 +192,8 @@ for (const file of files) {
   }
 
   const locals = localsOf(src);
-  // cuerpo sin cadenas, comentarios, plantillas ni accesos a propiedad
-  // Los comentarios se eliminan PRIMERO: si no, la palabra "importan" dentro de
-  // una frase hace que el patrón de import consuma hasta el siguiente ';',
-  // destruyendo el cierre '*/' y dejando prosa suelta en el cuerpo analizado.
-  const body = src
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/\/\/[^\n]*/g, '')
+  const body = limpiarCuerpo(src)
     .replace(/^\s*import[^;]+;/gm, '')
-    .replace(/`(?:\\.|\$\{[^}]*\}|[^`\\])*`/g, m => m.replace(/[^${}]/g, ' '))
-    .replace(/'(?:\\.|[^'\\])*'/g, "''")
-    .replace(/"(?:\\.|[^"\\])*"/g, '""')
     .replace(/\.\s*([A-Za-z_$][\w$]*)/g, '.');
 
   const seen = new Set();

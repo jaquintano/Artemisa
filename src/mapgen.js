@@ -9,7 +9,7 @@
  * El generador se autovalida (ver validarMapa): si alguna regla de conteo no se
  * cumple, revienta en vez de devolver un tablero silenciosamente injusto.
  */
-import { TERRAIN, FACTION_DEFS } from './config.js';
+import { TERRAIN, FACTION_DEFS, STARTING } from './config.js';
 
 /* Lado del gran hexágono = RADIUS+1, y el total 3·R²+3·R+1.
    3 jugadores -> lado 5, 61 losetas.  4 jugadores -> lado 6, 91 losetas. */
@@ -155,7 +155,7 @@ export function generarMapa(N = 3, rnd = Math.random){
     h.terrain = 'mare';
     h.owner = i;
     h.building = 'base';
-    h.units = 5;
+    h.units = STARTING[N].units;
     return h;
   });
 

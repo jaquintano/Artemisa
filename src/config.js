@@ -27,38 +27,89 @@ export const ELEVATION = { mare:0, highlands:0, crater:0, ice:0 };
 export const TERRAIN = {
   mare:      { name:'Mare (llanura basáltica)', color:'#4A5568', regolith:1, helium3:0, ice:0, defense:0 },
   highlands: { name:'Tierras Altas',            color:'#9C8F72', regolith:1, helium3:1, ice:0, defense:1 },
-  crater:    { name:'Cráter',                   color:'#3D3B42', regolith:0, helium3:2, ice:0, defense:1 },
+  crater:    { name:'Cráter',                   color:'#3D3B42', regolith:1, helium3:2, ice:0, defense:1 },
+  // El Paraje Helado no da defensa, pero controlarlo sube el tope de población en
+  // +3: +1 por el sector y +2 por el hielo que produce (ver popCap).
   ice:       { name:'Paraje Helado',            color:'#B9E3F0', regolith:0, helium3:0, ice:2, defense:0 },
 };
 
 const TODO_TERRENO = ['mare','highlands','crater','ice'];
 
+/* Campos de cada instalación:
+     resource  se pinta con el icono vectorial de ese recurso en vez del glifo
+     trains    permite reclutar guarniciones
+     unique    solo se puede tener una por facción en todo el mapa
+     enables   funciones que habilita mientras esté activa
+     upkeep    lo que cuesta mantenerla cada turno; si no se paga, se desactiva */
 export const BUILDING_TYPES = {
-  // 'resource' marca los edificios que se pintan con el icono vectorial del recurso
-  // que extraen (ver render/resource-icons.js) en vez de con el glifo de 'icon'.
-  // 'trains' marca los únicos edificios donde se pueden reclutar guarniciones.
-  mine:      { name:'Mina de Regolito',   icon:'⛏', resource:'regolith', cost:{regolith:15,helium3:0,ice:0},  produce:{regolith:3,helium3:0,ice:0}, defense:0, allowed:['mare','highlands','crater'] },
-  extractor: { name:'Extractor de He-3',  icon:'☢', resource:'helium3',  cost:{regolith:20,helium3:5,ice:0},  produce:{regolith:0,helium3:3,ice:0}, defense:0, allowed:['highlands','crater'] },
-  melter:    { name:'Fusor de Hielo',     icon:'❄', resource:'ice',    cost:{regolith:15,helium3:0,ice:0},  produce:{regolith:0,helium3:0,ice:1}, defense:0, allowed:['ice'] },
-  barracks:  { name:'Cuartel Lunar',      icon:'▣', trains:true,         cost:{regolith:20,helium3:10,ice:5}, produce:{regolith:0,helium3:0,ice:0}, defense:1, allowed:TODO_TERRENO },
-  turret:    { name:'Torreta Defensiva',  icon:'▲', cost:{regolith:25,helium3:10,ice:0}, produce:{regolith:0,helium3:0,ice:0}, defense:3, allowed:TODO_TERRENO },
-  lab:       { name:'Laboratorio',        icon:'◆', cost:{regolith:20,helium3:10,ice:0}, produce:{regolith:0,helium3:1,ice:0}, defense:0, allowed:TODO_TERRENO },
+  mine:      { name:'Mina de Regolito',   icon:'⛏', resource:'regolith',
+               cost:{regolith:15,helium3:0,ice:0},  produce:{regolith:3,helium3:0,ice:0},
+               defense:0, allowed:['mare','highlands','crater'] },
+  extractor: { name:'Extractor de He-3',  icon:'☢', resource:'helium3',
+               cost:{regolith:20,helium3:10,ice:0}, produce:{regolith:0,helium3:3,ice:0},
+               defense:0, allowed:['highlands','crater'] },
+  melter:    { name:'Fusor de Hielo',     icon:'❄', resource:'ice',
+               cost:{regolith:15,helium3:0,ice:0},  produce:{regolith:0,helium3:0,ice:1},
+               defense:0, allowed:['ice'] },
+  lab:       { name:'Laboratorio',        icon:'◆', unique:true, enables:['research','hoppers'],
+               cost:{regolith:15,helium3:5,ice:0},  produce:{regolith:0,helium3:0,ice:0},
+               upkeep:{regolith:0,helium3:1,ice:0}, defense:0, allowed:TODO_TERRENO },
+  barracks:  { name:'Cuartel Lunar',      icon:'▣', trains:true,
+               cost:{regolith:20,helium3:5,ice:2},  produce:{regolith:0,helium3:0,ice:0},
+               upkeep:{regolith:0,helium3:0,ice:1}, defense:1, allowed:TODO_TERRENO },
+  turret:    { name:'Torreta Defensiva',  icon:'▲', blocksHoppers:true,
+               cost:{regolith:35,helium3:25,ice:0}, produce:{regolith:0,helium3:0,ice:0},
+               upkeep:{regolith:0,helium3:1,ice:0}, defense:3, allowed:TODO_TERRENO },
   // La base no produce hielo: el hielo solo sale del Paraje Helado y del Fusor,
   // así que hay que ir a buscarlo al mapa en vez de recibirlo gratis.
-  base:      { name:'Base Principal',     icon:'★', trains:true,         cost:{regolith:0,helium3:0,ice:0},   produce:{regolith:1,helium3:1,ice:0}, defense:5, allowed:TODO_TERRENO },
+  base:      { name:'Base Principal',     icon:'★', trains:true,
+               cost:{regolith:0,helium3:0,ice:0},   produce:{regolith:1,helium3:1,ice:0},
+               upkeep:{regolith:0,helium3:0,ice:1}, defense:5, allowed:TODO_TERRENO },
+};
+
+/* Recursos y tropas de partida, según cuántos jueguen. Con 4 el tablero es mayor
+   y hay un rival más, así que se arranca con más margen económico. */
+export const STARTING = {
+  3: { resources:{ regolith:62, helium3:26, ice:20 }, units:5 },
+  4: { resources:{ regolith:75, helium3:30, ice:20 }, units:5 },
 };
 
 /* Coste de reclutar una guarnición. Vive aquí porque lo consultan a la vez la
    economía, la IA y el panel de acciones. */
 export const TRAIN_COST = { regolith:12, helium3:4, ice:0 };
 
+/* Árbol de investigación. TODAS exigen un Laboratorio construido y activo; las de
+   segundo nivel piden además la de primer nivel (`requiere`).
+   `bono` es lo que suma cada una a la producción por instalación, y se acumula:
+   una Mina con las dos Perforaciones produce 3+2+2 = 7. */
 export const TECHS = [
-  { id:'armor',    name:'Blindaje Reforzado',     cost:40, desc:'+1 fuerza a todas tus unidades (ataque y defensa)' },
-  { id:'drilling', name:'Perforación Profunda',   cost:35, desc:'+2 regolito por cada Mina' },
-  { id:'cryo',     name:'Procesado Criogénico',   cost:35, desc:'+2 hielo por cada Fusor de Hielo' },
-  { id:'fusion',   name:'Reactores de Fusión',    cost:50, desc:'+2 helio-3 por cada Extractor' },
-  { id:'relay',    name:'Relé Orbital',           cost:60, desc:'+25% de fuerza al atacar' },
+  { id:'hopper',    name:'Tecnología Hopper',       cost:20,
+    desc:'Desbloquea fabricar Transportadores en el Laboratorio' },
+  { id:'drilling1', name:'Perforación Profunda I',  cost:25, bono:{ mine:{regolith:2} },
+    desc:'+2 regolito por cada Mina' },
+  { id:'drilling2', name:'Perforación Profunda II', cost:40, requiere:'drilling1', bono:{ mine:{regolith:2} },
+    desc:'+2 regolito más por Mina (total +7 por turno)' },
+  { id:'cryo1',     name:'Procesado Criogénico I',  cost:25, bono:{ melter:{ice:2} },
+    desc:'+2 hielo por cada Fusor de Hielo' },
+  { id:'cryo2',     name:'Procesado Criogénico II', cost:45, requiere:'cryo1', bono:{ melter:{ice:1} },
+    desc:'+1 hielo más por Fusor (total +4 por turno)' },
+  { id:'armor',     name:'Blindaje Reforzado',      cost:35,
+    desc:'+1 fuerza en ataque y defensa a tu infantería (no a instalaciones vacías)' },
+  { id:'fusion1',   name:'Reactores de Fusión I',   cost:40, bono:{ extractor:{helium3:2} },
+    desc:'+2 helio-3 por cada Extractor' },
+  { id:'fusion2',   name:'Reactores de Fusión II',  cost:50, requiere:'fusion1', bono:{ extractor:{helium3:2} },
+    desc:'+2 helio-3 más por Extractor (total +7 por turno)' },
+  { id:'relay',     name:'Relé Orbital',            cost:45,
+    desc:'+25% de fuerza en cualquier ataque' },
 ];
+
+/* Transportador (Hopper): guarnición sin fuerza de combate que mueve infantería. */
+export const HOPPER = {
+  name:'Transportador',
+  cost:{ regolith:15, helium3:0, ice:5 },
+  capacidad:4,   // tropas que puede llevar
+  alcance:2,     // casillas de distancia máxima del salto
+};
 
 export const DIRS = [[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
 

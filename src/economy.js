@@ -8,23 +8,86 @@ import { requestRender } from './render/bus.js';
    La usan a la vez produceResources() para cobrarla y la barra superior para
    anunciarla: así el número que ve el jugador y el que se le abona no pueden
    separarse cuando se toquen los bonus. */
+/* Una instalación cuenta solo si está en pie Y pagada. `hex.disabled` lo marca
+   pagarMantenimiento() al cerrar el turno; mientras esté puesto, la instalación no
+   produce, no defiende y no habilita nada. */
+export function edificioActivo(hex){
+  return !!hex.building && !hex.disabled;
+}
+
+/* Bonificación acumulada de las tecnologías sobre un tipo de instalación.
+   Las de nivel II suman sobre las de nivel I: una Mina con las dos Perforaciones
+   produce 3+2+2 = 7 de regolito. */
+export function bonoTecnologico(faction, tipoEdificio){
+  const total = {regolith:0, helium3:0, ice:0};
+  for(const t of TECHS){
+    if(!t.bono || !t.bono[tipoEdificio] || !faction.techs.has(t.id)) continue;
+    for(const [rec, n] of Object.entries(t.bono[tipoEdificio])) total[rec] += n;
+  }
+  return total;
+}
+
 export function projectedIncome(faction){
   const gain = {regolith:0, helium3:0, ice:0};
   for(const h of state.hexes.values()){
     if(h.owner!==faction.id) continue;
     const t = TERRAIN[h.terrain];
     gain.regolith += t.regolith; gain.helium3 += t.helium3; gain.ice += t.ice;
-    if(h.building){
-      const b = BUILDING_TYPES[h.building];
-      gain.regolith += b.produce.regolith;
-      gain.helium3  += b.produce.helium3;
-      gain.ice      += b.produce.ice;
-      if(h.building==='mine'      && faction.techs.has('drilling')) gain.regolith += 2;
-      if(h.building==='melter'    && faction.techs.has('cryo'))     gain.ice      += 2;
-      if(h.building==='extractor' && faction.techs.has('fusion'))   gain.helium3  += 2;
-    }
+    if(!edificioActivo(h)) continue;
+    const b = BUILDING_TYPES[h.building];
+    const bono = bonoTecnologico(faction, h.building);
+    gain.regolith += b.produce.regolith + bono.regolith;
+    gain.helium3  += b.produce.helium3  + bono.helium3;
+    gain.ice      += b.produce.ice      + bono.ice;
   }
   return gain;
+}
+
+/* Mantenimiento total que debe la facción este turno. */
+export function mantenimientoDe(faction){
+  const total = {regolith:0, helium3:0, ice:0};
+  for(const h of state.hexes.values()){
+    if(h.owner!==faction.id || !h.building) continue;
+    const up = BUILDING_TYPES[h.building].upkeep;
+    if(!up) continue;
+    total.regolith += up.regolith||0; total.helium3 += up.helium3||0; total.ice += up.ice||0;
+  }
+  return total;
+}
+
+/* Cobra el mantenimiento y apaga lo que no se pueda pagar.
+ *
+ * El orden importa cuando no llega para todo, así que es fijo y no aleatorio: la
+ * Base primero (perderla deja sin reclutar), luego los Cuarteles, luego el
+ * Laboratorio y por último las Torretas. Así una facción arruinada conserva la
+ * capacidad de rehacerse antes que sus defensas.
+ *
+ * Un edificio apagado no se destruye: vuelve a encenderse solo en cuanto haya
+ * recursos para pagarlo. */
+const PRIORIDAD_MANTENIMIENTO = ['base', 'barracks', 'lab', 'turret'];
+
+export function pagarMantenimiento(){
+  for(const faction of state.factions){
+    if(!faction.alive) continue;
+    const suyos = [...state.hexes.values()].filter(h => h.owner===faction.id && h.building);
+    suyos.sort((a,b) => PRIORIDAD_MANTENIMIENTO.indexOf(a.building) -
+                        PRIORIDAD_MANTENIMIENTO.indexOf(b.building));
+    let apagados = 0;
+    for(const h of suyos){
+      const up = BUILDING_TYPES[h.building].upkeep;
+      if(!up){ h.disabled = false; continue; }
+      if(canAfford(faction, up)){
+        payCost(faction, up);
+        h.disabled = false;
+      } else {
+        if(!h.disabled) apagados++;
+        h.disabled = true;
+      }
+    }
+    if(apagados && faction.isPlayer){
+      log(`<b>Sin mantenimiento:</b> ${apagados} instalación(es) se han desactivado por falta de recursos.`);
+    }
+  }
 }
 
 /* Tope de población: 4 de base, más la producción de hielo por turno, más un
@@ -66,16 +129,46 @@ export function payCost(faction, cost){
   faction.resources.ice      -= (cost.ice      || 0);
 }
 
-export function canBuild(hex, type){
+/* Cuenta cuántas instalaciones de un tipo tiene ya la facción, para los `unique`. */
+export function cuantasTiene(faction, tipo){
+  let n = 0;
+  for(const h of state.hexes.values()) if(h.owner===faction.id && h.building===tipo) n++;
+  return n;
+}
+
+export function canBuild(hex, type, faction = state.factions[0]){
   const b = BUILDING_TYPES[type];
-  return b.allowed.includes(hex.terrain) && !hex.building;
+  if(!b.allowed.includes(hex.terrain) || hex.building) return false;
+  // el Laboratorio está limitado a uno por facción en todo el mapa
+  if(b.unique && cuantasTiene(faction, type) > 0) return false;
+  return true;
+}
+
+/* ¿Tiene la facción algún edificio activo que habilite esta función?
+   Hoy solo el Laboratorio habilita cosas: 'research' y 'hoppers'. */
+export function habilitado(faction, funcion){
+  for(const h of state.hexes.values()){
+    if(h.owner!==faction.id || !edificioActivo(h)) continue;
+    const b = BUILDING_TYPES[h.building];
+    if(b.enables && b.enables.includes(funcion)) return true;
+  }
+  return false;
 }
 
 /* Las guarniciones solo salen de un edificio marcado con `trains`: la Base
-   Principal y el Cuartel Lunar. Perder todos ellos deja a la facción sin poder
-   reponer tropas, que es justo la tensión que persigue la regla. */
+   Principal y el Cuartel Lunar. Perder todos ellos —o quedarse sin pagarlos—
+   deja a la facción sin poder reponer tropas. */
 export function canTrainAt(hex){
-  return !!hex.building && !!BUILDING_TYPES[hex.building].trains;
+  return edificioActivo(hex) && !!BUILDING_TYPES[hex.building].trains;
+}
+
+/* Requisitos de una investigación: Laboratorio activo siempre, y la tecnología
+   previa cuando la haya. */
+export function puedeInvestigar(faction, tech){
+  if(faction.techs.has(tech.id)) return false;
+  if(!habilitado(faction, 'research')) return false;
+  if(tech.requiere && !faction.techs.has(tech.requiere)) return false;
+  return true;
 }
 
 export function buildBuilding(hex, type){
@@ -103,9 +196,12 @@ export function trainUnit(hex){
 export function research(techId){
   const faction = state.factions[0];
   const tech = TECHS.find(t=>t.id===techId);
-  if(faction.techs.has(techId) || faction.resources.helium3 < tech.cost) return;
+  if(!puedeInvestigar(faction, tech) || faction.resources.helium3 < tech.cost) return;
   faction.resources.helium3 -= tech.cost;
   faction.techs.add(techId);
+  // La tecnología Hopper no surte efecto hasta el turno siguiente: se anota en qué
+  // ronda se completó para que el Laboratorio no pueda fabricar el mismo turno.
+  if(techId === 'hopper') faction.hopperDesdeRonda = state.turn + 1;
   log(`Tecnología investigada: <b>${tech.name}</b>`);
   requestRender();
 }

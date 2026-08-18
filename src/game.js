@@ -1,7 +1,7 @@
 /* Flujo de la partida: órdenes de movimiento, cierre de turno y arranque. */
 import { state, setState, newState, availableUnits, sectorLabel, log, resetMovement } from './state.js';
 import { resolveCombat } from './combat.js';
-import { produceResources } from './economy.js';
+import { produceResources, pagarMantenimiento } from './economy.js';
 import { aiTakeTurn } from './ai.js';
 import { checkVictory } from './victory.js';
 import { requestRender, hideGameOver } from './render/bus.js';
@@ -32,6 +32,11 @@ export function endTurn(){
   checkVictory();
   if(!state.gameOver){
     state.turn += 1;
+    // el mantenimiento se cobra ANTES de producir: lo que no se pueda pagar
+
+    // queda desactivado y por tanto no produce esta misma ronda
+
+    pagarMantenimiento();
     produceResources();
   }
   // nueva ronda del jugador: todas las guarniciones recuperan su movimiento
@@ -42,8 +47,9 @@ export function endTurn(){
 export function startGame(){
   // `state` es un binding importado (solo lectura aquí): se sustituye vía setState()
   setState(newState());
-  produceResources();
-  state.log = [];   // descarta el mensaje de producción del reparto inicial
+  // Ni producción ni mantenimiento al arrancar: la ronda 1 debe mostrar exactamente
+  // los recursos iniciales de STARTING. El primer cobro llega al cerrar el turno.
+  state.log = [];
   log('Comienza la campaña por el control de la superficie lunar.');
   hideGameOver();
   requestRender();

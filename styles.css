@@ -166,6 +166,10 @@
   .build-opt .bo-tit{font-weight:600;color:var(--text-main);font-size:12px;}
   .build-opt .bo-cost{color:var(--text-dim);font-size:10px;}
   .build-opt .bo-vent{color:var(--ok);font-size:10px;}
+  /* motivo por el que una opción no está disponible todavía */
+  .build-opt .bo-bloqueo{color:var(--danger);font-size:10px;font-style:italic;}
+  .tech-item.bloqueada{opacity:.55;}
+  .apagada{color:var(--danger);font-size:10px;letter-spacing:1px;}
   .build-opt .btn{flex-shrink:0;align-self:center;}
   /* «ACCIONES» es un rótulo interno del panel, no un título de sección: va en el
      color de texto normal para no competir con los títulos en ámbar. */

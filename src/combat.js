@@ -2,6 +2,7 @@
 import { DIRS, TERRAIN, BUILDING_TYPES, SUPPORT_FACTOR } from './config.js';
 import { state, getHex, isAdjacent, sectorLabel, log } from './state.js';
 import { checkEliminations } from './victory.js';
+import { edificioActivo } from './economy.js';
 
 export function fmtNum(n){ return Number.isInteger(n) ? String(n) : n.toFixed(1); }
 
@@ -43,7 +44,8 @@ export function defensePowerDetail(faction, hex, source){
   if(armor) p += 1;
   const terrainBonus = TERRAIN[hex.terrain].defense;
   p += terrainBonus;
-  const buildingBonus = hex.building ? BUILDING_TYPES[hex.building].defense : 0;
+  // una instalación sin mantenimiento pagado no defiende
+  const buildingBonus = edificioActivo(hex) ? BUILDING_TYPES[hex.building].defense : 0;
   p += buildingBonus;
   const neutralBonus = faction ? 0 : 1; // guarnición automática de sectores sin dueño
   p += neutralBonus;

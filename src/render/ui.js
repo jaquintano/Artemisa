@@ -2,7 +2,10 @@
 import { TERRAIN, BUILDING_TYPES, TECHS, MAX_TURNS, TRAIN_COST } from '../config.js';
 import { state, sectorLabel, neighborsOf, availableUnits, totalUnits, territoryCount } from '../state.js';
 import { fmtNum, attackPowerDetail, defensePowerDetail, describeAttack, describeDefense } from '../combat.js';
-import { buildBuilding, trainUnit, research, canAfford, canTrainAt, projectedIncome, popCap } from '../economy.js';
+import { buildBuilding, trainUnit, research, canAfford, canTrainAt, projectedIncome, popCap,
+         canBuild, edificioActivo, habilitado, puedeInvestigar, mantenimientoDe } from '../economy.js';
+import { HOPPER } from '../config.js';
+import { hoppersEn, puedeFabricarHopper, fabricarHopper, destinosPosibles, saltar } from '../hopper.js';
 import { confirmMove } from '../game.js';
 import { scoreDetail } from '../victory.js';
 import { renderMap } from './map.js';
@@ -45,6 +48,15 @@ export function ventajaEdificio(b){
   if(prod.length) partes.push(prod.join(' ') + ' por turno');
   if(b.defense)   partes.push(`+${b.defense} a la defensa del sector`);
   if(b.trains)    partes.push('permite reclutar guarniciones');
+  if(b.enables && b.enables.includes('research')) partes.push('habilita la investigación');
+  if(b.enables && b.enables.includes('hoppers'))  partes.push('fabrica Transportadores');
+  if(b.blocksHoppers) partes.push('niega el vuelo enemigo sobre su casilla');
+  if(b.unique)    partes.push('solo uno por facción');
+  if(b.upkeep){
+    const up = [['regolith',b.upkeep.regolith], ['helium3',b.upkeep.helium3], ['ice',b.upkeep.ice]]
+      .filter(([,n]) => n > 0).map(([k,n]) => `${n} ${resIcon(k,12)}`);
+    if(up.length) partes.push(`mantenimiento ${up.join(' ')} por turno`);
+  }
   return partes.length ? partes.join(' · ') : 'Sin efecto directo.';
 }
 
@@ -133,8 +145,10 @@ export function renderHexPanel(){
     <div class="stat-row"><span>Producción base</span><b>+${t.regolith} ${resIcon('regolith')} / +${t.helium3} ${resIcon('helium3')} / +${t.ice} ${resIcon('ice')}</b></div>
     <div class="stat-row"><span>Guarnición</span><b>${h.units} unidades</b></div>
     ${isMine ? `<div class="stat-row"><span>Disponibles este turno</span><b style="color:${avail>0?'var(--ok)':'var(--danger)'}">${avail}${spent>0?` (${spent} ya movidas)`:''}</b></div>` : ''}
-    <div class="stat-row"><span>Instalación</span><b>${h.building?BUILDING_TYPES[h.building].name:'— ninguna —'}</b></div>
+    <div class="stat-row"><span>Instalación</span><b>${h.building?BUILDING_TYPES[h.building].name:'— ninguna —'}${h.building&&h.disabled?' <span class="apagada">(DESACTIVADA)</span>':''}</b></div>
     ${h.building?`<div class="empty-hint" style="margin-top:-4px;">${ventajaEdificio(BUILDING_TYPES[h.building])}</div>`:''}
+    ${h.building&&h.disabled?`<div class="empty-hint" style="color:var(--danger);margin-top:-4px;">Sin mantenimiento pagado: no produce, no defiende y no habilita nada.</div>`:''}
+    ${hoppersEn(h)>0?`<div class="stat-row"><span>Transportadores</span><b>${hoppersEn(h)}</b></div>`:''}
     <div class="stat-row"><span>Fuerza de defensa base</span><b>${fmtNum(defDetailStatic.total)}</b></div>
     <div class="empty-hint" style="margin-top:-4px;">${describeDefense(defDetailStatic, h)}</div>`;
 
@@ -154,7 +168,7 @@ export function renderHexPanel(){
     if(!h.building){
       out += `<div class="build-list">`;
       for(const [key,b] of Object.entries(BUILDING_TYPES)){
-        if(key==='base' || !b.allowed.includes(h.terrain)) continue;
+        if(key==='base' || !canBuild(h, key, player)) continue;
         const afford = canAfford(player, b.cost);
         out += `<div class="build-opt">
           <div class="bo-name">
@@ -182,6 +196,42 @@ export function renderHexPanel(){
       </div>
       ${topeLleno?`<div class="empty-hint">Tope de población alcanzado (${popCap(player)}). Se amplía conquistando sectores y aumentando tu producción de hielo por turno.</div>`:''}`;
     }
+
+    // fabricar Transportadores: solo en el Laboratorio activo y con la tecnología
+    if(h.building==='lab' && edificioActivo(h)){
+      const listo = puedeFabricarHopper(player, h);
+      const pagable = canAfford(player, HOPPER.cost);
+      const motivo = !player.techs.has('hopper') ? 'Requiere investigar Tecnología Hopper'
+                   : !listo ? 'Disponible a partir de la próxima ronda' : '';
+      out += `<div class="build-opt" style="margin-top:10px;">
+        <div class="bo-name">
+          <span class="bo-tit">⬢ ${HOPPER.name}</span>
+          <span class="bo-cost">Recursos necesarios: ${costLabel(HOPPER.cost)}</span>
+          <span class="bo-vent">Traslada hasta ${HOPPER.capacidad} tropas a ${HOPPER.alcance} casillas. Sin fuerza de combate.</span>
+          ${motivo?`<span class="bo-bloqueo">${motivo}</span>`:''}
+        </div>
+        <button class="btn" id="hopperbtn" ${listo&&pagable?'':'disabled'}>FABRICAR</button>
+      </div>`;
+    }
+
+    // saltar con un Transportador que esté en este sector
+    if(hoppersEn(h) > 0){
+      const destinos = destinosPosibles(h);
+      const maxTropas = Math.min(HOPPER.capacidad, availableUnits(h));
+      out += `<p class="panel-title subtitulo" style="margin-top:12px;">SALTO DE TRANSPORTADOR</p>`;
+      if(!destinos.length){
+        out += `<div class="empty-hint">No hay destino válido a ${HOPPER.alcance} casillas: deben estar libres de guarniciones y fuera del alcance de torretas enemigas.</div>`;
+      } else {
+        out += `<div class="action-row">
+          <select class="numinput" id="hopperdest" style="width:auto;flex:1;">
+            ${destinos.map(d=>`<option value="${d.q},${d.r}">${sectorLabel(d)}</option>`).join('')}
+          </select>
+          <input type="number" min="0" max="${maxTropas}" value="${maxTropas}" class="numinput" id="hoppertropas">
+          <button class="btn" id="hopperjump">SALTAR</button>
+        </div>
+        <div class="empty-hint">Llevará las tropas indicadas (máx. ${maxTropas} disponibles).</div>`;
+      }
+    }
   }
 
   el.innerHTML = out;
@@ -191,6 +241,15 @@ export function renderHexPanel(){
   });
   const trainBtn = el.querySelector('#trainbtn');
   if(trainBtn) trainBtn.addEventListener('click', ()=>trainUnit(h));
+  const hopperBtn = el.querySelector('#hopperbtn');
+  if(hopperBtn) hopperBtn.addEventListener('click', ()=>fabricarHopper(h));
+  const jumpBtn = el.querySelector('#hopperjump');
+  if(jumpBtn) jumpBtn.addEventListener('click', ()=>{
+    const [q,r] = el.querySelector('#hopperdest').value.split(',').map(Number);
+    const tropas = parseInt(el.querySelector('#hoppertropas').value,10) || 0;
+    const destino = [...state.hexes.values()].find(d=>d.q===q && d.r===r);
+    if(destino) saltar(h, destino, tropas);
+  });
   const confirmBtn = el.querySelector('#confirmmove');
   if(confirmBtn) confirmBtn.addEventListener('click', ()=>{
     const amt = parseInt(document.getElementById('moveamount').value,10) || 1;
@@ -231,16 +290,27 @@ export function renderHexPanel(){
 
 export function renderTechs(){
   const player = state.factions[0];
-  document.getElementById('techlist').innerHTML = TECHS.map(t=>{
+  const conLab = habilitado(player, 'research');
+  const lista = document.getElementById('techlist');
+  // el Laboratorio es la condición primera: sin uno activo no hay investigación
+  const aviso = conLab ? '' :
+    `<div class="empty-hint">Necesitas un <b>Laboratorio</b> construido y con su
+      mantenimiento pagado para acceder a la investigación.</div>`;
+  lista.innerHTML = aviso + TECHS.map(t=>{
     const done = player.techs.has(t.id);
-    const afford = player.resources.helium3 >= t.cost;
+    const previa = t.requiere ? TECHS.find(x => x.id === t.requiere) : null;
+    const faltaPrevia = !!(previa && !player.techs.has(previa.id));
+    const disponible = puedeInvestigar(player, t);
+    const afford = player.resources.helium3 >= t.cost && disponible;
+    const motivo = faltaPrevia ? `Requiere ${previa.name}` : (!conLab ? 'Requiere Laboratorio activo' : '');
     // misma estructura que las opciones de construcción: título, coste, ventaja y
     // el botón a la derecha, para que el panel se lea igual en las dos secciones
-    return `<div class="tech-item build-opt ${done?'done':''}">
+    return `<div class="tech-item build-opt ${done?'done':''} ${!done&&!disponible?'bloqueada':''}">
       <div class="bo-name">
         <span class="bo-tit">${t.name}</span>
         <span class="bo-cost">${done?'✓ COMPLETO':`Recursos necesarios: ${t.cost} ${resIcon('helium3',11)}`}</span>
         <span class="bo-vent">${t.desc}</span>
+        ${motivo&&!done?`<span class="bo-bloqueo">${motivo}</span>`:''}
       </div>
       ${done?'':`<button class="btn" data-tech="${t.id}" ${afford?'':'disabled'}>INVESTIGAR</button>`}
     </div>`;
