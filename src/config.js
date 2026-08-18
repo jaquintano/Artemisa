@@ -4,11 +4,14 @@
    no puede leer package.json sin una petición extra, así que la versión vive aquí
    y `node tools/version.mjs` la copia a package.json. No la edites a mano en dos
    sitios; usa el script y quedarán siempre iguales. */
-export const APP_VERSION = '1.0.5';
+export const APP_VERSION = '1.0.6';
 
-// Radio del mapa hexagonal. El lado del hexágono grande mide RADIUS+1 sectores y
-// el total es 3·R²+3·R+1, así que R=4 son 5 de lado y 61 sectores.
-export const RADIUS = 4;
+/* Número de jugadores de la partida: 3 o 4. Determina el tamaño del tablero
+   (3 -> lado 5, 61 losetas; 4 -> lado 6, 91 losetas) y cuántas facciones entran
+   en juego. El radio ya no es una constante: lo calcula src/mapgen.js a partir de
+   este número y viaja en `state.radius`. */
+export const PLAYER_COUNT = 3;
+
 export const HEX_SIZE = 30;
 // 80 y no 60: medido que las partidas piden ~65 rondas para decidirse, así que el
 // límite anterior las cortaba justo antes de resolverse (40 % resueltas -> 84 %).
@@ -27,7 +30,6 @@ export const TERRAIN = {
   crater:    { name:'Cráter',                   color:'#3D3B42', regolith:0, helium3:2, ice:0, defense:1 },
   ice:       { name:'Paraje Helado',            color:'#B9E3F0', regolith:0, helium3:0, ice:2, defense:0 },
 };
-export const TERRAIN_WEIGHTS = [['mare',.35],['highlands',.30],['crater',.20],['ice',.15]];
 
 const TODO_TERRENO = ['mare','highlands','crater','ice'];
 
@@ -63,10 +65,13 @@ export const DIRS = [[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
 
 export const ZOOM_MIN = 0.6, ZOOM_MAX = 2.4, ZOOM_STEP = 1.25;
 
+/* El orden importa: se toman las PLAYER_COUNT primeras, así que la cuarta solo
+   entra en las partidas de 4. El jugador es siempre la id 0. */
 export const FACTION_DEFS = [
   { id:0, name:'Proyecto Artemis',   color:'#4FC3E8', dim:'#2A5A6E', isPlayer:true  },
   { id:1, name:'Grupo Vostok',       color:'#E8935D', dim:'#6E4A2A', isPlayer:false },
   { id:2, name:'Consorcio Helios',   color:'#7ED9A8', dim:'#3A6E52', isPlayer:false },
+  { id:3, name:'Iniciativa Selene',  color:'#C58BE8', dim:'#5A3A6E', isPlayer:false },
 ];
 
 /* Proporción de la guarnición vecina que se aporta como apoyo (1 = fuerza completa).

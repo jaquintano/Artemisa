@@ -46,6 +46,7 @@ index.html          estructura y textos de la interfaz
 styles.css          estilos (variables CSS en :root)
 src/
   config.js         constantes de dominio y parámetros de balance
+  mapgen.js         generación del tablero por reglas (bases, terreno, neutrales)
   state.js          estado de partida y consultas sobre la rejilla hexagonal
   combat.js         apoyo entre sectores, fuerzas de ataque/defensa, resolución
   economy.js        producción, tope de población, construcción, reclutamiento
@@ -64,6 +65,7 @@ src/
 tests/
   check-imports.mjs verificación estática del grafo de módulos
   balance-sim.mjs   simulación IA vs IA sin navegador
+  mapgen-test.mjs   comprueba las reglas de generación sobre cientos de mapas
 tools/
   serve.mjs         servidor estático de desarrollo (`npm start`), sin dependencias
   version.mjs       consulta, incrementa y comprueba el número de versión
@@ -171,6 +173,24 @@ introduce una dependencia del DOM en la capa de lógica, deja de ejecutarse.
 - **Combate**: gana quien tenga más fuerza; el desglose completo debe seguir
   apareciendo en el registro de misión y en la vista previa. No sustituyas el
   modelo determinista por tiradas aleatorias sin pedirlo explícitamente.
+- **El tablero se genera por reglas, no al azar** (`mapgen.js`). Todo arranca
+  siendo Mare; encima se tallan una *zona de expansión* por jugador (radio 2 desde
+  su base, con exactamente 2 Tierras Altas, 2 Cráter y 2 Parajes Helados) y una
+  *tierra de nadie* central (a 3 o más casillas de toda base) con 1 o 3 de cada
+  tipo según haya 3 o 4 jugadores. La intención es que **ningún jugador salga
+  favorecido por el sorteo**: si tocas el reparto, mantén esa simetría.
+  `generarMapa()` se autovalida y revienta si los conteos no cuadran, en vez de
+  devolver un tablero injusto en silencio; `tests/mapgen-test.mjs` lo comprueba
+  además sobre cientos de mapas y verifica la geometría.
+- **Las bases van equidistantes en el perímetro.** No basta con repartir por
+  índice de anillo: con 4 jugadores el perímetro mide 30 y 30/4 no es entero, de
+  modo que ese reparto da 8,6,8,6. `repartirBases()` busca entre las combinaciones
+  y sí encuentra la perfecta. Resultado: 3 jugadores forman un triángulo con las
+  tres parejas a 8; 4 jugadores, un cuadrado con las contiguas a 7 y las diagonales
+  a 10. **Busca, no supongas**, si cambias el número de jugadores.
+- **`PLAYER_COUNT` (3 o 4) manda sobre el tamaño**: 3 → lado 5 y 61 losetas;
+  4 → lado 6 y 91. El radio dejó de ser constante y viaja en `state.radius`; las
+  facciones son las `PLAYER_COUNT` primeras de `FACTION_DEFS`.
 - **Victoria técnica por puntos**: si se agotan las rondas decide `score()` de
   `victory.js`, no el territorio a secas. Puntúan sectores, instalaciones en pie,
   bajas rivales confirmadas (`faction.kills`, que lleva `resolveCombat`) y haber

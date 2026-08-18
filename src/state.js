@@ -1,59 +1,28 @@
-/* Estado de la partida y consultas sobre la rejilla hexagonal. Sin DOM. */
-import { RADIUS, DIRS, TERRAIN, TERRAIN_WEIGHTS, FACTION_DEFS } from './config.js';
+/* Estado de la partida y consultas sobre la rejilla hexagonal. Sin DOM.
+   El tablero lo construye src/mapgen.js; aquí solo se consulta y se muta. */
+import { DIRS, PLAYER_COUNT } from './config.js';
+import { generarMapa, faccionesDe, hexKey as claveHex } from './mapgen.js';
 
 /* Binding vivo: los módulos que lo importan ven las reasignaciones hechas aquí.
    Para sustituirlo por completo hay que usar setState(). */
 export let state = null;
 export function setState(s){ state = s; }
 
-export function hexKey(q,r){ return q+','+r; }
+export const hexKey = claveHex;
 
-export function newState(){
-  const hexes = new Map();
-  for(let q=-RADIUS; q<=RADIUS; q++){
-    const r1 = Math.max(-RADIUS, -q-RADIUS), r2 = Math.min(RADIUS, -q+RADIUS);
-    for(let r=r1; r<=r2; r++){
-      const s = -q-r;
-      const terrain = weightedTerrain();
-      hexes.set(hexKey(q,r), { q,r,s, terrain, owner:null, building:null, units:0, movedUnits:0 });
-    }
-  }
-  const factions = FACTION_DEFS.map(f=>({
+export function newState(jugadores = PLAYER_COUNT){
+  // el tablero, las bases y las guarniciones neutrales salen ya listos de mapgen
+  const { hexes, radius } = generarMapa(jugadores);
+
+  const factions = faccionesDe(jugadores).map(f=>({
     id:f.id, name:f.name, color:f.color, dim:f.dim, isPlayer:f.isPlayer, alive:true,
     resources:{ regolith:60, helium3:25, ice:20 },
     techs:new Set(),
     kills:0,   // unidades rivales destruidas; puntúa para la victoria técnica
   }));
 
-  const corners = [
-    [RADIUS,-RADIUS], [0,RADIUS], [-RADIUS,0]
-  ];
-  corners.forEach((c,i)=>{
-    const h = hexes.get(hexKey(c[0],c[1]));
-    h.terrain = 'mare';
-    h.owner = i;
-    h.building = 'base';
-    // 5 encaja justo con el tope inicial (4 + 0 de hielo + 1 sector): se empieza
-    // al completo, no por encima, que se leería como un fallo del juego.
-    h.units = 5;
-  });
-
-  // guarniciones neutrales
-  for(const h of hexes.values()){
-    if(h.owner===null){
-      const t = TERRAIN[h.terrain];
-      h.units = (t.defense>=1) ? (1+Math.floor(Math.random()*3)) : (Math.random()<0.5?1:0);
-    }
-  }
-
-  return { hexes, factions, turn:1, phase:'player', gameOver:false, selected:null, pending:null, log:[] };
-}
-
-export function weightedTerrain(){
-  const r = Math.random();
-  let acc=0;
-  for(const [name,w] of TERRAIN_WEIGHTS){ acc+=w; if(r<=acc) return name; }
-  return 'mare';
+  return { hexes, factions, radius, jugadores, turn:1, phase:'player',
+           gameOver:false, selected:null, pending:null, log:[] };
 }
 
 export function getHex(q,r){ return state.hexes.get(hexKey(q,r)); }
@@ -61,8 +30,9 @@ export function neighborsOf(h){
   return DIRS.map(d=>getHex(h.q+d[0], h.r+d[1])).filter(Boolean);
 }
 export function sectorLabel(h){
-  const col = String.fromCharCode(65 + (h.q + RADIUS));
-  const row = h.r + RADIUS + 1;
+  // el radio ya no es constante: depende del número de jugadores
+  const col = String.fromCharCode(65 + (h.q + state.radius));
+  const row = h.r + state.radius + 1;
   return `Sector ${col}${row}`;
 }
 /* popCap() vive en economy.js: depende de la producción de hielo, que se calcula

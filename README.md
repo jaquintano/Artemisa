@@ -1,8 +1,8 @@
 # Artemisa
 
 Simulador de estrategia por turnos sobre la superficie lunar. Tres facciones
-compiten por el control territorial de un mapa hexagonal de 61 sectores
-(5 de lado).
+compiten por el control territorial de un mapa hexagonal generado por reglas:
+61 losetas (lado 5) a 3 jugadores, 91 (lado 6) a 4.
 
 JavaScript puro con ES modules: **sin dependencias, sin build step**.
 
@@ -34,6 +34,9 @@ node tests/balance-sim.mjs 200   # simulación IA vs IA, sin navegador
 - **Tope de población** = 4 + producción de hielo por turno + sectores
   controlados. Cuenta el flujo, no lo acopiado: expandirse es lo que financia el
   ejército con el que sigues expandiéndote.
+- **Mapa equilibrado por diseño**: el tablero no es terreno aleatorio. Cada
+  jugador arranca con una base equidistante en el perímetro y una zona de
+  expansión con exactamente los mismos recursos que sus rivales.
 - **Cuatro terrenos** con producción y bonus defensivo propios. Todo el arte
   —terreno, guarniciones e iconos de recurso— es SVG vectorial calculado en
   tiempo de ejecución: sin ficheros de imagen y nítido a cualquier zoom.
