@@ -28,7 +28,30 @@ document.getElementById('restartbtn').addEventListener('click', () => {
   if (confirm('¿Reiniciar la partida actual?')) startGame();
 });
 document.getElementById('overlayrestart').addEventListener('click', startGame);
-document.getElementById('version').textContent = 'v' + APP_VERSION;
+const elVersion = document.getElementById('version');
+elVersion.textContent = 'v' + APP_VERSION;
+
+/* Aviso de versión caducada.
+ *
+ * GitHub Pages sirve el HTML con `Cache-Control: max-age=600`, así que después de
+ * publicar el navegador puede seguir enseñando la copia anterior hasta diez
+ * minutos. Eso ya despistó un par de veces: parecía que el despliegue había
+ * fallado cuando lo único viejo era la pestaña abierta.
+ *
+ * Se compara la versión de esta copia con la publicada, pidiendo package.json sin
+ * pasar por la caché. Si no coinciden, el distintivo lo avisa y al pulsarlo
+ * recarga. No recarga solo a propósito: hacerlo a media partida sería peor que el
+ * problema que resuelve. */
+fetch('package.json?cb=' + Date.now(), { cache: 'no-store' })
+  .then(r => r.ok ? r.json() : null)
+  .then(p => {
+    if (!p || p.version === APP_VERSION) return;
+    elVersion.classList.add('caducada');
+    elVersion.textContent = `v${APP_VERSION} → v${p.version} disponible`;
+    elVersion.title = 'Estás viendo una copia en caché. Pulsa para recargar.';
+    elVersion.addEventListener('click', () => location.reload());
+  })
+  .catch(() => {});   // sin conexión o servido desde file://: no es motivo de fallo
 
 /* Dos paneles con el mismo patrón de interruptor: el botón refleja su estado en
    aria-pressed, que es de lo que tira el CSS para resaltarlo en ámbar. */

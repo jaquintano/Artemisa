@@ -42,6 +42,9 @@
   /* align-self:flex-end la baja a la línea base del título, para que no flote */
   .version{font-size:11px;color:var(--text-dim);letter-spacing:1px;align-self:flex-end;
     padding-bottom:3px;}
+  /* copia en caché: hay una versión más nueva publicada, pulsar recarga */
+  .version.caducada{color:var(--amber);cursor:pointer;font-weight:700;}
+  .version.caducada:hover{text-decoration:underline;}
   #howtotoggle[aria-pressed="true"]{border-color:var(--amber);color:var(--amber);}
 
   /* Est. Juego: ronda y territorio por facción, al mismo tamaño que los recursos */

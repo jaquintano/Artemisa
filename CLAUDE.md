@@ -83,6 +83,16 @@ que cada cambio que llega a GitHub lleva su propia versión sin ensuciar el
 historial con commits de sólo-versión. Es seguro porque ese commit todavía no
 está en el remoto. La versión se muestra junto al título en la cabecera.
 
+**Ojo con la caché al verificar un despliegue.** GitHub Pages sirve el HTML con
+`Cache-Control: max-age=600`: durante diez minutos el navegador puede seguir
+enseñando la copia anterior aunque el push haya ido bien. Ya ha hecho pensar dos
+veces que el despliegue había fallado. Para comprobar qué hay publicado de verdad,
+pide el fichero saltándote la caché (`curl` o `fetch` con `cache:'no-store'`) en
+vez de mirar la pestaña abierta. `main.js` compara al arrancar su `APP_VERSION`
+con la de `package.json` y, si no coinciden, el distintivo de la cabecera avisa y
+al pulsarlo recarga; deliberadamente **no** recarga solo, porque hacerlo a media
+partida sería peor que el problema que resuelve.
+
 ### Regla de dependencias
 
 El flujo es **presentación → lógica**, nunca al revés. Si un módulo de lógica
