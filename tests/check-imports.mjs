@@ -23,6 +23,11 @@ const GLOBALS = new Set([
   'String', 'Boolean', 'JSON', 'Date', 'parseInt', 'parseFloat', 'isNaN', 'confirm',
   'alert', 'SVGElement', 'requestAnimationFrame', 'setTimeout', 'clearTimeout',
   'Infinity', 'NaN', 'undefined', 'null', 'true', 'false', 'this', 'globalThis',
+  // red y navegación: sin 'fetch' aquí, el aviso de versión caducada de main.js
+  // se tomaba por una referencia rota y llegó a bloquear una publicación
+  'fetch', 'Response', 'Request', 'Headers', 'URL', 'URLSearchParams', 'Promise',
+  'location', 'history', 'navigator', 'localStorage', 'sessionStorage',
+  'Error', 'TypeError', 'RangeError', 'Symbol', 'Intl', 'structuredClone',
 ]);
 
 const RESERVED = new Set([

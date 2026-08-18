@@ -4,7 +4,7 @@
    no puede leer package.json sin una petición extra, así que la versión vive aquí
    y `node tools/version.mjs` la copia a package.json. No la edites a mano en dos
    sitios; usa el script y quedarán siempre iguales. */
-export const APP_VERSION = '1.0.4';
+export const APP_VERSION = '1.0.5';
 
 // Radio del mapa hexagonal. El lado del hexágono grande mide RADIUS+1 sectores y
 // el total es 3·R²+3·R+1, así que R=4 son 5 de lado y 61 sectores.
