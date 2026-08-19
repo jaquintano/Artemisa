@@ -114,7 +114,7 @@ export function renderResbar(){
   const chip = (cls, kind, valor) =>
     `<div class="res ${cls}">${resIcon(kind,RESBAR_ICON)} ${Math.floor(valor)}<span
       class="res-inc${d.neto[kind]<0?' negativo':''}" tabindex="0"
-      >(${conSigno(d.neto[kind])})${menuDesglose(d, kind)}</span></div>`;
+      ><span class="inc-cifra">(${conSigno(d.neto[kind])})</span>${menuDesglose(d, kind)}</span></div>`;
   document.getElementById('resbar').innerHTML =
     chip('regolith','regolith', p.resources.regolith) +
     chip('helium',  'helium3',  p.resources.helium3) +
