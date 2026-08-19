@@ -1,6 +1,6 @@
 {
   "name": "artemisa",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "description": "Simulador de estrategia por turnos ambientado en la Luna. JavaScript puro, sin dependencias.",
   "type": "module",
   "scripts": {
