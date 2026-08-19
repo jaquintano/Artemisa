@@ -62,6 +62,7 @@ tests/
 tools/
   serve.mjs         servidor estático de desarrollo (`npm start`), sin dependencias
   version.mjs       consulta, incrementa y comprueba el número de versión
+  auto-deploy.sh    hook Stop: avisa, sube versión y publica (no commitea)
 ```
 
 ### Regla de dependencias
@@ -87,14 +88,22 @@ ejecuta `version.mjs check`, que falla si divergen.
 
 ### Publicación automática (hook Stop)
 
-`.claude/auto-deploy.sh` corre al final de cada turno y **no commitea**: los
-commits los haces tú, con un mensaje que explique el cambio. El script sólo avisa
-si queda algo sin commitear, sube la versión, comprueba `check-imports.mjs` y
-empuja a `origin/main` (que es lo que redespliega GitHub Pages). Antes sí
-commiteaba solo, con mensajes tipo «Cambios automáticos de sesión: …»; se quitó
-porque se adelantaba al commit de verdad y, al publicarlo en el acto, arreglar el
-mensaje obligaba a reescribir historia ya subida. **Ojo: ese script vive fuera del
-repo, así que no tiene historial en git**; hay una copia en `auto-deploy.sh.bak`.
+`tools/auto-deploy.sh` corre al final de cada turno y **no commitea**: los commits
+los haces tú, con un mensaje que explique el cambio. El script sólo avisa si queda
+algo sin commitear, sube la versión, comprueba `check-imports.mjs` y empuja a
+`origin/main` (que es lo que redespliega GitHub Pages). Antes sí commiteaba solo,
+con mensajes tipo «Cambios automáticos de sesión: …»; se quitó porque se adelantaba
+al commit de verdad y, al publicarlo en el acto, arreglar el mensaje obligaba a
+reescribir historia ya subida.
+
+Vive dentro del repo (antes estaba en `../.claude/`, fuera de git y sin historial
+ni rollback posible). Quien lo invoca es el hook `Stop` de
+`../.claude/settings.local.json`, con la ruta absoluta: **si mueves el script,
+actualiza también esa ruta o el hook deja de encontrarlo y falla en silencio.**
+Calcula la raíz del repo como el padre de su propia carpeta, así que sólo funciona
+desde `tools/`. Pruébalo sobre un clon con un remoto falso, nunca sobre el repo
+real: los cuatro casos son árbol sucio, commit propio, importación rota y nada que
+hacer.
 
 **Ojo con la caché al verificar un despliegue.** GitHub Pages sirve el HTML con
 `max-age=600`: hasta diez minutos el navegador puede seguir mostrando la copia
